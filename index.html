@@ -3,364 +3,318 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>餘燼安可 Demo</title>
+<title>餘燼安可 拉密版</title>
 <style>
-:root{--bg:#120e1a;--panel:#1e1730;--line:#3a2f52;--text:#eee6ff;--dim:#9a8fb5;--red:#ff4d6d;--gold:#ffc857;--green:#7dffa8;--cyan:#7fd3ff}
+:root{--bg:#120e1a;--panel:#1e1730;--line:#3a2f52;--text:#eee6ff;--dim:#9a8fb5;--red:#ff4d6d;--gold:#ffc857;--green:#7dffa8}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,"PingFang TC","Noto Sans TC",sans-serif;font-size:14px}
 #app{max-width:1000px;margin:0 auto;padding:12px 16px}
 h1{font-size:20px;margin:4px 0 6px}h1 small{color:var(--dim);font-weight:400;font-size:13px}
+a{color:var(--gold)}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 .dim{color:var(--dim)}
-canvas{width:100%;display:block;background:#0b0811;border:1px solid var(--line);border-radius:10px;transition:transform .05s}
+canvas{width:100%;display:block;background:#0b0811;border:1px solid var(--line);border-radius:10px}
 .btn{background:var(--gold);color:#000;border:0;border-radius:8px;padding:9px 16px;font-weight:700;font-size:15px;cursor:pointer}
-.btn.ghost{background:#2a2140;color:var(--text);border:1px solid var(--line)}.btn:disabled{opacity:.4;cursor:default}
-.card{width:128px;min-height:118px;padding:8px;border-radius:10px;background:#2a2140;border:2px solid var(--line);cursor:pointer;font-size:12px;user-select:none;transition:transform .15s cubic-bezier(.3,1.6,.5,1),border-color .1s;animation:pop .25s cubic-bezier(.3,1.6,.5,1)}
+.btn.ghost{background:#2a2140;color:var(--text);border:1px solid var(--line)}
+.card{width:120px;min-height:104px;padding:8px;border-radius:10px;background:#2a2140;border:2px solid var(--line);cursor:pointer;font-size:12px;user-select:none;transition:transform .15s cubic-bezier(.3,1.6,.5,1);animation:pop .25s cubic-bezier(.3,1.6,.5,1)}
 .card:hover{transform:translateY(-8px) scale(1.06);border-color:var(--gold)}
 .card.pick{border-color:var(--red)}
-.card b{font-size:15px;display:block;margin:2px 0}
-.card .t{font-size:11px;color:var(--dim)}
+.card b{font-size:15px;display:block;margin:4px 0}.card .t{font-size:11px;color:var(--dim)}
 @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
 .k{display:inline-block;min-width:20px;padding:1px 4px;margin:1px;border-radius:4px;font-weight:800;text-align:center;color:#000;font-size:12px}
-.kW{background:#7fd3ff}.kA{background:#ffc857}.kS{background:#ff7b54}.kD{background:#b48cff}
+.kW{background:#7fd3ff}.kA{background:#ffc857}.kS{background:#ff7b54}.kD{background:#b48cff}.kE{background:#ff3b3b;color:#fff}.kQ{background:#5ee0e0}
 .skill{padding:5px 8px;border-radius:8px;background:#191326;border:1px solid var(--line);font-size:12px;min-width:150px;flex:1}
-.skill.ok{border-color:var(--green)}.skill.no{opacity:.45}.skill.live{border-color:var(--gold);box-shadow:0 0 8px #ffc85788}
+.skill.ok{border-color:var(--green)}.skill.live{border-color:var(--gold);box-shadow:0 0 8px #ffc85788}.skill.lock{opacity:.35}
 .k.done{outline:2px solid #fff}
 .overlay{position:fixed;inset:0;background:rgba(10,6,16,.88);display:flex;align-items:center;justify-content:center;z-index:9}
 .overlay .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;max-width:760px;width:calc(100% - 32px);max-height:90vh;overflow:auto}
 #log{font-size:12px;color:var(--dim);height:54px;overflow:auto}
-.pool{font-size:16px}
 </style>
 </head>
 <body>
 <div id="app">
   <div class="row" style="align-items:flex-start;justify-content:space-between">
     <div style="flex:1;min-width:260px">
-      <h1>《Encore of Embers｜餘燼安可》 <small>v0.4 Demo 戰鬥版</small></h1>
-      <div class="dim" style="font-size:13px;line-height:1.6">你落入音樂就是魔法的「諧音界」。每回合先<b>策略</b>：打出鍵牌把鍵放進鍵池（上限 8），下方技能欄會亮出湊得出的招式。再<b>節奏</b>：16 拍、每拍按一個鍵（W/A/S/D），連續按出技能指令就施放，指令越長越強；停按一拍就結算。紅色拍是敵人攻擊，用 <b>AAA</b> 把最後一拍對準它就能擋下，Perfect 會彈反。</div>
+      <h1>《Encore of Embers｜餘燼安可》 <small>拉密版戰鬥原型・<a href="v04.html">切到 v0.4 節拍版</a></small></h1>
+      <div class="dim" style="font-size:13px;line-height:1.6">怪物出招時，場上會一波波落下字母牌。你在時限內用鍵盤打出技能表上的指令：每打一個字母，先從場上扣，場上沒有才用自己的字母池。拼成就發動。時間到時場上剩幾張字母，你就受幾點傷害。<b>格擋 AWSA</b> 會清掉最早的一波，怪物還會送你 2 個字母。</div>
     </div>
     <div style="display:flex;flex-direction:column;gap:6px">
       <button class="btn ghost" id="pauseBtn" onclick="togglePause()">⏸ 暫停（P）</button>
       <button class="btn ghost" onclick="restart()">↻ 重新開始</button>
     </div>
   </div>
-  <div style="margin-top:8px"><canvas id="cv" width="960" height="380"></canvas></div>
+  <div style="margin-top:8px"><canvas id="cv" width="960" height="400"></canvas></div>
   <div id="ui" style="margin-top:8px"></div>
-  <div class="panel" style="margin-top:8px"><div class="dim" style="font-size:12px;margin-bottom:4px">技能組</div><div class="row" id="skills"></div></div>
+  <div class="panel" style="margin-top:8px"><div class="dim" style="font-size:12px;margin-bottom:4px">技能表（要完全照順序打出；綠框＝場上加字母池湊得出）</div><div class="row" id="skills"></div></div>
   <div class="panel" style="margin-top:8px"><div id="log"></div></div>
 </div>
 <div id="ov"></div>
 <script>
 // ===== 資料 =====
-const KEYS=['W','A','S','D'];
-const KCOL={W:'#7fd3ff',A:'#ffc857',S:'#ff7b54',D:'#b48cff'};
-const WHO={主角:{icon:'🎸',col:'#c39bff',inst:'地球的吉他'},葛倫:{icon:'🥁',col:'#ff7b54',inst:'熔爐鼓'},莉瑟拉:{icon:'🪕',col:'#7fd3ff',inst:'星露琴'},原始:{icon:'✊',col:'#cccccc'}};
+const LET=['W','A','S','D','E','Q'];
+const LCOL={W:'#7fd3ff',A:'#ffc857',S:'#ff7b54',D:'#b48cff',E:'#ff3b3b',Q:'#5ee0e0'};
+const WHO={主角:{icon:'🎸',col:'#c39bff'},葛倫:{icon:'🥁',col:'#ff7b54'},莉瑟拉:{icon:'🪕',col:'#7fd3ff'},原始:{icon:'✊',col:'#cccccc'}};
 const SKILLS=[
-  {name:'輕擊',who:'原始',cmd:'WWW',prim:true,text:'3 傷害',fx:m=>dmg(3*m)},
-  {name:'防守',who:'原始',cmd:'AAA',prim:true,guard:true,text:'最後一拍對準攻擊拍擋下；Perfect 彈反'},
-  {name:'異界刷奏',who:'主角',cmd:'ASW',text:'6 傷害＋護盾 4',fx:m=>{dmg(6*m);shield(4*m)}},
-  {name:'火星點擊',who:'葛倫',cmd:'SAS',text:'8 傷害',fx:m=>dmg(8*m)},
-  {name:'星光護幕',who:'莉瑟拉',cmd:'DSD',text:'護盾 10',fx:m=>shield(10*m)},
-  {name:'重拍',who:'葛倫',cmd:'WWAS',text:'12 傷害',fx:m=>dmg(12*m)},
-  {name:'星露長音',who:'莉瑟拉',cmd:'SSDW',text:'8 傷害，下回合開始再 8',fx:m=>{dmg(8*m);G.dot+=8*m}},
-  {name:'裂縫和弦',who:'主角',cmd:'DWSAD',text:'18 傷害，敵人下一次攻擊延後 2 拍',fx:m=>{dmg(18*m);delayNext()}},
-  {name:'熔爐重擊',who:'葛倫',cmd:'WWASDD',text:'30 傷害＋暈眩（下回合不攻擊）',fx:m=>{dmg(30*m);G.stunNext=true}},
+  {name:'格擋',who:'原始',cmd:'AWSA',text:'清掉最早一波攻擊，怪物送你 2 個 W/S',fx:guard},
+  {name:'輕擊',who:'原始',cmd:'SWS',text:'4 傷害',fx:m=>dmg(4*m)},
+  {name:'重拍',who:'葛倫',cmd:'WWAS',text:'10 傷害',fx:m=>dmg(10*m)},
+  {name:'星光護幕',who:'莉瑟拉',cmd:'DAD',text:'護盾 6（擋時間到的傷害）',fx:m=>shield(6*m)},
+  {name:'星露長音',who:'莉瑟拉',cmd:'DSDW',text:'8 傷害，下回合開始再 8',fx:m=>{dmg(8*m);G.dot+=8*m}},
+  {name:'火星連打',who:'葛倫',cmd:'SDSD',locked:true,text:'8 傷害，燒掉場上所有 E',fx:m=>{dmg(8*m);clearField('E')}},
+  {name:'熔爐重擊',who:'葛倫',cmd:'SSAWDD',locked:true,text:'24 傷害＋暈眩（下回合字母減半）',fx:m=>{dmg(24*m);G.stunNext=true;boom()}},
+  {name:'異界之歌',who:'主角',cmd:'WWWASED',locked:true,text:'22 傷害，凍結解除：清掉場上所有 Q',fx:m=>{dmg(22*m);clearField('Q');boom()}},
+  {name:'裂縫和弦',who:'主角',cmd:'WDDDDASW',locked:true,text:'34 傷害，場上剩下的字母全收進字母池',fx:m=>{dmg(34*m);absorbField();boom()}},
 ];
 const CARDS={
-  ww:{type:'key',keys:'WW',who:'主角'},
-  aad:{type:'key',keys:'AAD',who:'主角'},
-  sd:{type:'key',keys:'SD',who:'主角'},
-  dws:{type:'key',keys:'DWS',who:'主角'},
-  wasd:{type:'key',keys:'WASD',who:'主角'},
-  was:{type:'key',keys:'WAS',who:'葛倫'},
-  ws:{type:'key',keys:'WS',who:'葛倫'},
-  dd:{type:'key',keys:'DD',who:'葛倫'},
-  ssw:{type:'key',keys:'SSW',who:'莉瑟拉'},
-  dw:{type:'key',keys:'DW',who:'莉瑟拉'},
-  sdw:{type:'key',keys:'SDW',who:'莉瑟拉'},
+  wws:{type:'key',l:'WWS',who:'主角'},aws:{type:'key',l:'AWS',who:'主角'},aaw:{type:'key',l:'AAW',who:'主角'},
+  dw:{type:'key',l:'DW',who:'主角'},wasd:{type:'key',l:'WASD',who:'主角'},we:{type:'key',l:'WWE',who:'主角'},
+  ssa:{type:'key',l:'SSA',who:'葛倫'},was:{type:'key',l:'WAS',who:'葛倫'},ssd:{type:'key',l:'SSD',who:'葛倫'},
+  dds:{type:'key',l:'DDS',who:'莉瑟拉'},dws:{type:'key',l:'DWS',who:'莉瑟拉'},ddw:{type:'key',l:'DDW',who:'莉瑟拉'},
   tune:{type:'util',name:'調音',who:'主角',text:'抽 2 張'},
   swap:{type:'util',name:'換弦',who:'主角',text:'棄 1 張手牌，抽 1 張'},
   ban:{type:'util',name:'BAN',who:'主角',text:'把一張手牌從牌組永久移除'},
-  warm:{type:'pass',name:'連打熱身',who:'主角',text:'本回合按 W 達 5 次：再 6 傷害',check:s=>s.cnt.W>=5,fx:()=>dmg(6)},
-  pin:{type:'pass',name:'精準一擊',who:'莉瑟拉',text:'Perfect 按 D 恰好 1 次：下回合護盾 +8',check:s=>s.perf.D===1,fx:()=>{G.nextShield+=8}},
-  drum:{type:'pass',name:'鼓點蓄力',who:'葛倫',text:'本回合按 S 達 4 次：再 8 傷害',check:s=>s.cnt.S>=4,fx:()=>dmg(8)},
-  echo:{type:'pass',name:'星光回響',who:'莉瑟拉',text:'本回合沒被打中：再 10 傷害',check:s=>!s.hurt,fx:()=>dmg(10)},
 };
-const START_DECK=['ww','ww','aad','sd','sd','was','ws','ssw','dw','tune','swap','ban','warm','pin'];
-const REWARDS=['dws','wasd','dd','sdw','was','ssw','ww','tune','swap','ban','drum','echo','warm','pin'];
+const START_DECK=['wws','wws','aws','aaw','dw','ssa','was','dds','dws','tune','swap','ban'];
+const REWARD_CARDS=['wasd','we','ssd','ddw','was','dws','aaw','tune','ban'];
 const ENEMIES=[
-  {name:'噪音史萊姆',icon:'🦠',hp:70,hint:'教學：空檔夠大，放得下 6 鍵大招',plan:r=>({hits:[[8,6],[16,6]],note:'第 8、16 拍各撞一下'})},
-  {name:'尖嘯蝙蝠群',icon:'🦇',hp:70,hint:'連續快攻：全擋，還是吃傷害換輸出？',plan:r=>({hits:[[3,3],[5,3],[7,3],[9,3]],note:'第 3、5、7、9 拍連續尖嘯'})},
-  {name:'石像守衛',icon:'🗿',hp:100,hint:'蓄力回合一定要預留一組防守',plan:r=>r%2?{hits:[[6,4]],note:'蓄力中…（下回合第 12 拍重擊）'}:{hits:[[12,15]],note:'重擊！第 12 拍 15 傷害'}},
-  {name:'走音女妖',icon:'👻',hp:150,boss:true,hint:'Boss：攻擊拍隨機，後半段加速到 120 BPM',plan:r=>{const s=new Set();while(s.size<4)s.add(2+rint(15));const h=[...s].sort((a,b)=>a-b).map(b=>[b,6]);return{hits:h,fast:true,note:`第 ${h.map(x=>x[0]).join('、')} 拍尖叫，後半加速`}}},
+  {name:'噪音史萊姆',icon:'🦠',hp:55,hint:'教學：兩大波，慢慢拼',waves:r=>[[0,5],[6,5]]},
+  {name:'尖嘯蝙蝠群',icon:'🦇',hp:60,hint:'三連擊：一小波接一小波',waves:r=>[[0,3],[3,3],[6,3],[9,3]]},
+  {name:'石像守衛',icon:'🗿',hp:85,hint:'蓄力回合字母少，下回合一次倒一大把',waves:r=>r%2?[[0,3]]:[[0,4],[5,9]]},
+  {name:'走音女妖',icon:'👻',hp:120,boss:true,hint:'Boss：混入 E（灼燒）和 Q（凍結）',waves:r=>[[0,5,1],[4,5,1],[8,5,1]]},
 ];
-const POOL_MAX=8,HAND=5;
-let WIN_P=0.07,WIN_G=0.16;
+const TIME=12,BEAT=0.6,KEEP=3;
 
 // ===== 狀態 =====
 let G={},AC=null,uid=0;
+const mk=id=>({id,uid:++uid});
 function newRun(){
-  G={deck:START_DECK.map(mk),morale:50,maxMorale:50,fight:0,phase:'map',floats:[],parts:[],loose:false};
+  G={deck:START_DECK.map(mk),skills:SKILLS.filter(s=>!s.locked).map(s=>s.cmd),morale:40,maxMorale:40,fight:0,phase:'map',floats:[],parts:[],field:[]};
   showIntro();
 }
-function mk(id){return{id,uid:++uid}}
 function startFight(){
-  const E=ENEMIES[G.fight];
-  G.enemy={...E,maxHp:E.hp,hp:E.hp,flash:0,knock:0,shownHp:E.hp};
-  G.draw=shuffle(G.deck.slice());G.discard=[];G.hand=[];G.round=0;G.dot=0;G.stunNext=false;G.nextShield=0;
-  log(`⚔ ${E.name} 出現！${E.hint}`);
-  nextRound();
+  const E=ENEMIES[G.fight];G.enemy={...E,maxHp:E.hp,flash:0,knock:0,shownHp:E.hp};
+  G.draw=shuffle(G.deck.slice());G.discard=[];G.hand=[];G.round=0;G.dot=0;G.burn=0;G.freeze=0;G.stunNext=false;
+  G.pool={W:0,A:0,S:0,D:0,E:0,Q:0};
+  log(`⚔ ${E.name} 出現！${E.hint}`);nextRound();
 }
 function nextRound(){
-  G.round++;G.phase='plan';G.pool={W:0,A:0,S:0,D:0};G.passives=[];G.mode=null;G.shield=G.nextShield;G.nextShield=0;
-  if(G.dot){const d=G.dot;G.dot=0;dmg(d,'星露餘音');if(G.enemy.hp<=0)return win();}
-  const p=G.enemy.plan(G.round);
-  G.stunned=G.stunNext;G.stunNext=false;
-  G.intent={hits:G.stunned?[]:p.hits.map(([b,d])=>({beat:b,dmg:d})),fast:!!p.fast,note:G.stunned?'暈眩中，這回合不攻擊':p.note};
-  G.beats=buildBeats(G.intent.fast);G.marks=Array(16).fill(null);
-  for(let i=0;i<HAND;i++)drawCard();
+  G.round++;G.phase='plan';G.mode=null;G.shield=0;G.field=[];G.buf=[];
+  if(G.burn){hurt(G.burn,'灼燒');G.burn=0;if(G.morale<=0)return lose();}
+  if(G.dot){dmg(G.dot,'星露餘音');G.dot=0;if(G.enemy.hp<=0)return win();}
+  const stun=G.stunNext;G.stunNext=false;
+  G.waves=G.enemy.waves(G.round).map(([at,n,sp])=>({at,n:stun?Math.ceil(n/2):n,sp:sp||0,arrived:false}));
+  G.time=TIME-G.freeze;G.freeze=0;
+  for(let i=0;i<5;i++)drawCard();
   render();
 }
 function drawCard(){if(!G.draw.length){if(!G.discard.length)return;G.draw=shuffle(G.discard);G.discard=[];}G.hand.push(G.draw.pop());}
-function buildBeats(fast){const t=[];let x=0;for(let i=0;i<16;i++){t.push(x);x+=fast&&i>=8?0.5:0.6;}return t;}
 
-// ===== 策略階段 =====
+// ===== 準備階段 =====
 function playCard(i){
-  if(G.phase!=='plan')return;
-  const c=G.hand[i],C=CARDS[c.id];
-  if(G.mode){ // 換弦／BAN 選目標
-    G.hand.splice(i,1);
-    if(G.mode==='swap'){G.discard.push(c);drawCard();log(`換弦：棄掉 ${cname(c.id)}，抽 1 張`);}
-    else{G.deck=G.deck.filter(d=>d.uid!==c.uid);log(`🚫 BAN：${cname(c.id)} 永久移出牌組（剩 ${G.deck.length} 張）`);}
-    G.mode=null;sfx('card');return render();
-  }
-  G.hand.splice(i,1);sfx('card');
-  if(C.type==='key'){let lost=0;for(const k of C.keys){if(poolSize()<POOL_MAX)G.pool[k]++;else lost++;}G.discard.push(c);if(lost)log(`鍵池滿了，浪費 ${lost} 個鍵`);}
-  else if(C.type==='util'){
-    if(c.id==='tune'){drawCard();drawCard();G.discard.push(c);}
-    else if(c.id==='swap'){G.discard.push(c);if(G.hand.length)G.mode='swap';}
-    else if(c.id==='ban'){G.discard.push(c);if(G.hand.length)G.mode='ban';}
-  }else{G.passives.push(c);}
+  if(G.phase!=='plan')return;const c=G.hand[i],C=CARDS[c.id];G.hand.splice(i,1);sfx('card');
+  if(G.mode){if(G.mode==='swap'){G.discard.push(c);drawCard();}else{G.deck=G.deck.filter(d=>d.uid!==c.uid);log(`🚫 BAN：${cname(c.id)} 永久移出（牌組 ${G.deck.length} 張）`);}G.mode=null;return render();}
+  G.discard.push(c);
+  if(C.type==='key')for(const ch of C.l)G.pool[ch]++;
+  else if(c.id==='tune'){drawCard();drawCard();}
+  else if(G.hand.length)G.mode=c.id;
   render();
 }
-const poolSize=()=>KEYS.reduce((s,k)=>s+G.pool[k],0);
-const cname=id=>CARDS[id].name||`[${CARDS[id].keys.split('').join(' ')}]`;
-function canAfford(s,pool=G.pool){if(s.prim)return true;const need={};for(const k of s.cmd)need[k]=(need[k]||0)+1;return KEYS.every(k=>(need[k]||0)<=pool[k]);}
+const cname=id=>CARDS[id].name||lettersText(CARDS[id].l);
+function lettersText(s){const n={};for(const c of s)n[c]=(n[c]||0)+1;return Object.entries(n).map(([k,v])=>`${v}${k}`).join(' ');}
 
-// ===== 節奏階段 =====
+// ===== 交鋒階段 =====
 function audio(){if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended'&&!G.paused)AC.resume();return AC;}
 const now=()=>AC.currentTime-G.t0;
-function startRhythm(){
-  if(G.phase!=='plan')return;
-  audio();G.mode=null;G.phase='rhythm';G.t0=AC.currentTime+4*0.6;
-  G.buf=[];G.resolved=Array(16).fill(false);G.press=Array(16).fill(null);G.blocks={};
-  G.stats={cnt:{W:0,A:0,S:0,D:0},perf:{W:0,A:0,S:0,D:0},hurt:false};G.slow=0;
-  for(let i=-4;i<16;i++)tick(G.t0+(i<0?i*0.6:G.beats[i]),i<0||i%4===0);
+function startClash(){
+  if(G.phase!=='plan')return;audio();G.mode=null;G.phase='clash';G.t0=AC.currentTime+1.2;G.nextTick=0;
   render();requestAnimationFrame(loop);
 }
 function loop(){
-  if(G.phase!=='rhythm')return;
+  if(G.phase!=='clash')return;
   if(!G.paused){
     const t=now();
-    for(let b=0;b<16;b++){if(!G.resolved[b]&&t>G.beats[b]+WIN_G){G.resolved[b]=true;resolveBeat(b);if(G.phase!=='rhythm')return;}}
-    if(t>G.beats[15]+WIN_G+0.4)return endRound();
+    while(G.nextTick*BEAT<=t+0.1&&G.nextTick*BEAT<=G.time){tick(G.t0+G.nextTick*BEAT,G.nextTick%4===0);G.nextTick++;}
+    G.waves.forEach((w,i)=>{if(!w.arrived&&t>=w.at){w.arrived=true;spawnWave(w,i);}});
+    if(t>=G.time)return timeUp();
   }
   draw();requestAnimationFrame(loop);
 }
-function nearestBeat(t){let b=0;for(let i=1;i<16;i++)if(Math.abs(G.beats[i]-t)<Math.abs(G.beats[b]-t))b=i;return b;}
-function press(k){
-  if(G.phase!=='rhythm'||G.paused)return;
-  const t=now(),b=nearestBeat(t),dt=Math.abs(G.beats[b]-t),s=G.loose?1.5:1;
-  if(G.press[b]||G.resolved[b])return;
-  if(dt>WIN_G*s){sfx('miss');floatTxt('MISS',KCOL[k]);if(G.buf.length)interrupt('Miss，指令中斷');return;}
-  const grade=dt<=WIN_P*s?'perfect':'good';
-  let paid=false;if(G.pool[k]>0){G.pool[k]--;paid=true;}
-  const p={k,grade,paid,b};G.press[b]=p;G.marks[b]=p;
-  G.stats.cnt[k]++;if(grade==='perfect')G.stats.perf[k]++;
-  keySound(k,grade);burst(k);floatTxt(grade==='perfect'?'PERFECT':'GOOD',grade==='perfect'?'#ffc857':'#7dffa8');
-  G.buf.push(p);
-  let str=bufStr();
-  if(!isPrefix(str)){
-    const prev=G.buf.slice(0,-1);
-    const ok=prev.length&&settle(prev,true);
-    if(!ok&&prev.length)interrupt('按錯鍵，指令中斷',true);
-    G.buf=isPrefix(k)?[p]:[];
-    str=bufStr();
-  }
-  if(str&&SKILLS.some(s=>s.cmd===str)&&!SKILLS.some(s=>s.cmd.length>str.length&&s.cmd.startsWith(str))){settle(G.buf);G.buf=[];}
-  renderSkills();
+function spawnWave(w,i){
+  const L=[];for(let k=0;k<w.n;k++)L.push('WASD'[rint(4)]);
+  for(let k=0;k<w.sp;k++){L[rint(L.length)]='E';L[rint(L.length)]='Q';}
+  L.forEach((ch,k)=>G.field.push({ch,wave:i,uid:++uid,born:performance.now()+k*60}));
+  thud(.5);shake(4);floatTxt(`第 ${i+1} 波：${w.n} 張字母`,'#ff9bb0',true);renderSkills();
 }
-const bufStr=()=>G.buf.map(p=>p.k).join('');
-const isPrefix=str=>SKILLS.some(s=>s.cmd.startsWith(str));
-function settle(seq,keepBuf){
-  const str=seq.map(p=>p.k).join('');
-  const cands=SKILLS.filter(s=>str.startsWith(s.cmd)&&(s.prim||seq.slice(0,s.cmd.length).every(p=>p.paid))).sort((a,b)=>b.cmd.length-a.cmd.length);
-  const s=cands[0];
-  if(!s){if(seq.length>=3)log(`「${str}」沒有成形${SKILLS.some(x=>x.cmd===str)?'（鍵池不夠）':''}`);if(!keepBuf)G.buf=[];return false;}
-  const used=seq.slice(0,s.cmd.length);
-  if(s.prim)used.forEach(p=>{if(p.paid){G.pool[p.k]++;p.paid=false;}});
-  cast(s,used);if(!keepBuf)G.buf=[];return true;
+const bufStr=()=>G.buf.map(b=>b.ch).join('');
+const mySkills=()=>SKILLS.filter(s=>G.skills.includes(s.cmd));
+function typeLetter(ch){
+  if(G.phase!=='clash'||G.paused||now()<0)return;
+  const str=bufStr()+ch;
+  if(!mySkills().some(s=>s.cmd.startsWith(str))){sfx('err');floatTxt(`沒有「${str}」開頭的招`,'#ff4d6d');return;}
+  let src;const fi=G.field.findIndex(f=>f.ch===ch&&!f.gone);
+  if(fi>=0){src={ch,from:'field',tile:G.field[fi]};G.field[fi].gone=performance.now();}
+  else if(G.pool[ch]>0){G.pool[ch]--;src={ch,from:'pool'};}
+  else{sfx('err');floatTxt(`沒有 ${ch} 了`,'#ff4d6d');return;}
+  G.buf.push(src);keySound(ch);
+  const s=mySkills().find(s=>s.cmd===bufStr());
+  if(s)cast(s);
+  renderSkills();renderUI();
 }
-function interrupt(why,quiet){G.buf=[];if(!quiet)sfx('miss');floatTxt(why,'#ff4d6d',true);renderSkills();}
-function cast(s,used){
-  const perfect=used.every(p=>p.grade==='perfect'),m=perfect?1.5:1;
-  used.forEach(p=>p.cast=s.who);
-  if(s.guard){
-    const b=used[used.length-1].b+1,h=G.intent.hits.find(x=>x.beat===b&&!x.done);
-    if(h){G.blocks[b]={parry:perfect};floatTxt(perfect?'彈反架勢！':'防守架勢',perfect?'#ffc857':'#7dffa8',true);}
-    else floatTxt('防守落空（不是攻擊拍）','#9a8fb5',true);
-    return;
-  }
-  phrase(s);
-  floatTxt(`${s.name}${perfect?' ×1.5':''}`,WHO[s.who].col,true);
-  log(`${WHO[s.who].icon} ${s.who}「${s.name}」${s.cmd}${perfect?'（全 Perfect ×1.5）':''}`);
-  sparks(WHO[s.who].col,s.cmd.length*8);
-  if(s.cmd.length>=6){G.slow=performance.now();shake(14);boom();}
+function undo(){
+  if(G.phase!=='clash'||!G.buf.length)return;const b=G.buf.pop();
+  if(b.from==='field')b.tile.gone=0;else G.pool[b.ch]++;
+  sfx('card');renderSkills();renderUI();
+}
+function cast(s){
+  const t=now(),off=Math.abs(t-Math.round(t/BEAT)*BEAT),onBeat=off<0.09,m=onBeat?1.25:1;
+  const fromField=G.buf.filter(b=>b.from==='field').length;
+  G.field=G.field.filter(f=>!f.gone||performance.now()-f.gone<400);
+  G.buf=[];phrase(s);sparks(WHO[s.who].col,s.cmd.length*8);if(s.cmd.length>=6)shake(12);
+  floatTxt(`${s.name}${onBeat?'・踩在拍上 ×1.25':''}`,WHO[s.who].col,true);
+  log(`${WHO[s.who].icon} ${s.name} ${s.cmd}（場上字母 ${fromField} 張）${onBeat?'・踩拍 ×1.25':''}`);
   s.fx(m);
-  if(G.enemy.hp<=0)setTimeout(win,500);
+  if(G.enemy.hp<=0){G.phase='won';setTimeout(win,500);}
 }
-function resolveBeat(b){
-  const B=b+1;
-  if(!G.press[b]&&G.buf.length)settle(G.buf); // 停按一拍就結算
-  const h=G.intent.hits.find(x=>x.beat===B&&!x.done);if(!h)return;h.done=true;
-  const blk=G.blocks[B];
-  if(blk){if(blk.parry){dmg(h.dmg,'彈反');clang();freeze();floatTxt('彈反！','#ffc857',true);}else{thud(.4);floatTxt('擋下！','#7dffa8',true);}return;}
-  let d=h.dmg;const ab=Math.min(G.shield,d);G.shield-=ab;d-=ab;
-  G.morale=Math.max(0,G.morale-d);G.stats.hurt=true;thud(1);shake(8);
-  floatTxt(d?`-${d} 士氣`:`護盾吸收 ${ab}`,'#ff4d6d',true);
-  if(G.buf.length)interrupt('被打中，指令中斷',true);
-  if(G.morale<=0){G.phase='over';setTimeout(lose,500);}
+function guard(){
+  const live=G.field.filter(f=>!f.gone);
+  if(!live.length){floatTxt('格擋落空：場上沒有字母','#9a8fb5',true);return;}
+  const w=Math.min(...live.map(f=>f.wave));let n=0;live.forEach(f=>{if(f.wave===w){f.gone=performance.now();n++;}});
+  const gift=[0,1].map(()=>'WS'[rint(2)]);gift.forEach(c=>G.pool[c]++);
+  clang();floatTxt(`擋下第 ${w+1} 波（${n} 張）！獲得 ${gift.join(' ')}`,'#ffc857',true);
 }
-function endRound(){
-  if(G.buf.length)settle(G.buf);
-  G.passives.forEach(c=>{const C=CARDS[c.id];if(C.check(G.stats)){C.fx();log(`✨ 被動「${C.name}」發動`);}G.discard.push(c);});
+function clearField(ch){G.field.forEach(f=>{if(f.ch===ch&&!f.gone)f.gone=performance.now();});}
+function absorbField(){G.field.forEach(f=>{if(!f.gone){f.gone=performance.now();G.pool[f.ch]++;}});}
+function timeUp(){
+  G.phase='end';
+  // 拼到一半的指令：場上的字母放回去，字母池的字母浪費
+  G.buf.forEach(b=>{if(b.from==='field')b.tile.gone=0;});if(G.buf.length)log(`拼到一半的「${bufStr()}」沒發動`);G.buf=[];
+  const left=G.field.filter(f=>!f.gone);
+  const e=left.filter(f=>f.ch==='E').length,q=left.filter(f=>f.ch==='Q').length;
+  let d=left.length;const ab=Math.min(G.shield,d);d-=ab;
+  if(left.length){hurt(d,`剩 ${left.length} 張字母${ab?`，護盾擋 ${ab}`:''}`);shake(10);thud(1);}else floatTxt('場上清空！無傷','#7dffa8',true);
+  if(e){G.burn=2*e;log(`🔥 ${e} 個 E 沒消掉：下回合灼燒 ${G.burn}`);}
+  if(q){G.freeze=1.5*q;log(`❄ ${q} 個 Q 沒消掉：下回合時限 -${G.freeze} 秒`);}
+  // 字母池保留最多 KEEP 個
+  let keep=KEEP;LET.forEach(k=>{const n=Math.min(G.pool[k],keep);keep-=n;G.pool[k]=n;});
   G.discard.push(...G.hand);G.hand=[];
-  if(G.enemy.hp<=0)return win();
-  G.phase='end';render();setTimeout(nextRound,600);
+  draw();render();
+  if(G.morale<=0)return setTimeout(lose,600);
+  setTimeout(nextRound,1200);
 }
-function dmg(n,why){
-  n=Math.round(n);const E=G.enemy;E.hp=Math.max(0,E.hp-n);E.flash=performance.now();E.knock=Math.min(30,8+n);
-  G.floats.push({x:760,y:90,text:`-${n}${why?' '+why:''}`,col:'#fff',born:performance.now(),big:true});
-}
+function finishEarly(){if(G.phase==='clash'&&G.waves.every(w=>w.arrived))timeUp();}
+function dmg(n,why){n=Math.round(n);const E=G.enemy;E.hp=Math.max(0,E.hp-n);E.flash=performance.now();E.knock=Math.min(30,8+n);
+  G.floats.push({x:760,y:90,text:`-${n}${why?' '+why:''}`,col:'#fff',born:performance.now(),big:true});}
 function shield(n){G.shield+=Math.round(n);floatTxt(`護盾 +${Math.round(n)}`,'#7dffa8',true);}
-function delayNext(){
-  const cur=G.phase==='rhythm'?nearestBeat(now())+1:0;
-  const h=G.intent.hits.filter(x=>!x.done&&x.beat>cur).sort((a,b)=>a.beat-b.beat)[0];
-  if(!h)return;h.beat+=2;if(h.beat>16){h.done=true;floatTxt('攻擊被推出這回合！','#c39bff',true);}else floatTxt(`攻擊延後到第 ${h.beat} 拍`,'#c39bff',true);
-}
+function hurt(n,why){G.morale=Math.max(0,G.morale-n);floatTxt(`-${n} 士氣（${why}）`,'#ff4d6d',true);log(`💥 受到 ${n} 傷害（${why}）`);}
 function win(){
-  if(G.phase==='won')return;G.phase='won';G.morale=Math.min(G.maxMorale,G.morale+10);
-  sfx('win');
-  if(G.fight===ENEMIES.length-1)return overlay(`<h2>🎶 走音女妖安靜了</h2><p>第一段「歸途旋律」在空氣裡響起。Demo 結束，打了 ${G.round} 回合。</p><p><b>打完一場，想不想再打一場？</b></p><button class="btn" onclick="closeOv();newRun()">再來一輪</button>`);
-  const pick=shuffle(REWARDS.slice()).slice(0,3);
-  overlay(`<h2>勝利！${G.enemy.name} 被旋律驅散（${G.round} 回合）</h2><p class="dim">士氣 +10（${G.morale}/${G.maxMorale}）。選一張卡加入牌組：</p>
-  <div class="row">${pick.map(id=>cardHTML(id,`onclick="takeReward('${id}')"`)).join('')}</div><p><button class="btn ghost" onclick="takeReward(null)">跳過</button></p>`);
+  G.phase='won';G.morale=Math.min(G.maxMorale,G.morale+8);sfx('win');
+  if(G.fight===ENEMIES.length-1)return overlay(`<h2>🎶 走音女妖安靜了</h2><p>第一段「歸途旋律」響起。Demo 結束，最後一場打了 ${G.round} 回合。</p><p><b>打完一場，想不想再打一場？</b></p><button class="btn" onclick="closeOv();newRun()">再來一輪</button>`);
+  const locked=SKILLS.filter(s=>!G.skills.includes(s.cmd));
+  const opts=shuffle(REWARD_CARDS.slice()).slice(0,locked.length?2:3).map(id=>({card:id}));
+  if(locked.length)opts.push({skill:locked[rint(locked.length)].cmd});
+  overlay(`<h2>勝利！${G.enemy.name} 被旋律驅散（${G.round} 回合）</h2><p class="dim">士氣 +8（${G.morale}/${G.maxMorale}）。選一個獎勵：</p>
+  <div class="row">${opts.map(o=>o.card?cardHTML(o.card,`onclick="takeReward('c','${o.card}')"`):skillCard(o.skill)).join('')}</div><p><button class="btn ghost" onclick="takeReward()">跳過</button></p>`);
 }
-function takeReward(id){if(id){G.deck.push(mk(id));log(`＋ ${cname(id)} 加入牌組`);}G.fight++;closeOv();startFight();}
-function lose(){overlay(`<h2>士氣歸零</h2><p>樂團被 ${G.enemy.name} 擊潰了。</p><button class="btn" onclick="closeOv();newRun()">重新開始</button>`);}
+function skillCard(cmd){const s=SKILLS.find(x=>x.cmd===cmd);return `<div class="card" style="width:200px;border-top:4px solid ${WHO[s.who].col}" onclick="takeReward('s','${cmd}')"><div class="t">新技能・${WHO[s.who].icon} ${s.who}</div><b>${s.name}</b>${keysHTML(s.cmd)}<div style="margin-top:4px">${s.text}</div></div>`;}
+function takeReward(type,v){if(type==='c'){G.deck.push(mk(v));log(`＋ ${cname(v)} 加入牌組`);}if(type==='s'){G.skills.push(v);log(`＋ 學會新技能 ${v}`);}G.fight++;closeOv();startFight();}
+function lose(){G.phase='over';overlay(`<h2>士氣歸零</h2><p>樂團被 ${G.enemy.name} 擊潰了。</p><button class="btn" onclick="closeOv();newRun()">重新開始</button>`);}
 function togglePause(){
-  if(G.phase!=='rhythm'){log('只有節奏階段可以暫停');return;}
+  if(G.phase!=='clash'){log('只有交鋒階段可以暫停');return;}
   G.paused=!G.paused;G.paused?AC.suspend():AC.resume();
   document.getElementById('pauseBtn').textContent=G.paused?'▶ 繼續（P）':'⏸ 暫停（P）';draw();
 }
 function restart(){
   if(!confirm('確定要放棄這次冒險，從頭開始？'))return;
   G.phase='over';G.paused=false;if(AC)AC.resume();
-  document.getElementById('pauseBtn').textContent='⏸ 暫停（P）';document.getElementById('log').innerHTML='';
-  closeOv();newRun();
+  document.getElementById('pauseBtn').textContent='⏸ 暫停（P）';document.getElementById('log').innerHTML='';closeOv();newRun();
 }
 function showIntro(){
-  overlay(`<h2>諧音界・迷途</h2><p>你是地球的平凡音樂人，抱著吉他掉進一個音樂就是魔法的世界。矮人鼓手葛倫和精靈莉瑟拉撿到了你。前方有 4 場戰鬥，打倒走音女妖，拿到第一段歸途旋律。</p>
-  <ul class="dim"><li>策略：點手牌打出。鍵牌把鍵放進鍵池（上限 8）；整理牌立刻生效；被動牌在節奏階段達成條件才發動。</li>
-  <li>節奏：16 拍、每拍一鍵。連續按出技能欄的指令就施放，會消耗鍵池的鍵；鍵不夠只能用原始技能（WWW、AAA）。</li>
-  <li>停按一拍就結算，以目前符合的最長指令為準。Miss、按錯鍵、被打中都會中斷指令，已用的鍵不退。</li>
-  <li>全 Perfect：技能 ×1.5；防守變彈反，把傷害彈回去。</li></ul>
-  <label><input type="checkbox" onchange="G.loose=this.checked"> 判定寬鬆</label>
+  overlay(`<h2>諧音界・拉密版戰鬥</h2>
+  <ul class="dim"><li><b>準備</b>：點手牌打出。鍵牌把字母放進你的字母池（例如「2W 1S」）；整理牌立刻生效。</li>
+  <li><b>交鋒（${TIME} 秒）</b>：怪物一波波把字母丟到場上。用鍵盤 W/A/S/D/E/Q 打出技能表上的指令，每個字母<b>先扣場上的</b>，場上沒有才用字母池。完整打出就發動。打錯可以按 Backspace 退回。</li>
+  <li>時間到：場上剩下的字母每張 1 點傷害；沒消掉的 E 下回合灼燒，Q 讓下回合時限變短。拼到一半的指令不發動。</li>
+  <li><b>格擋 AWSA</b> 清掉最早的一波，怪物還會送你 2 個 W/S，接成更長的招。在節拍上完成技能 ×1.25（加分，不是必要）。</li>
+  <li>字母池最多保留 ${KEEP} 個到下回合。勝利後可以選新卡或學新技能。</li></ul>
   <p><button class="btn" onclick="closeOv();startFight()">出發 ▶</button></p>`);
 }
 
 // ===== UI =====
+const keysHTML=s=>s.split('').map(k=>`<span class="k k${k}">${k}</span>`).join('');
 function cardHTML(id,attr='',cls=''){const C=CARDS[id],w=WHO[C.who];
-  const body=C.type==='key'?`<div style="margin:6px 0">${C.keys.split('').map(k=>`<span class="k k${k}">${k}</span>`).join('')}</div><div class="t">鍵牌</div>`:`<b>${C.name}</b><div class="t">${C.type==='util'?'整理牌':'被動牌'}</div><div style="margin-top:4px">${C.text}</div>`;
+  const body=C.type==='key'?`<b>${lettersText(C.l)}</b>${keysHTML(C.l)}<div class="t" style="margin-top:4px">字母牌</div>`:`<b>${C.name}</b><div class="t">整理牌</div><div style="margin-top:4px">${C.text}</div>`;
   return `<div class="card ${cls}" ${attr} style="border-top:4px solid ${w.col}"><div class="t">${w.icon} ${C.who}</div>${body}</div>`;}
 function render(){renderUI();renderSkills();draw();}
+function poolHTML(){return LET.filter(k=>G.pool[k]||'WASD'.includes(k)).map(k=>`<span class="k k${k}">${k}×${G.pool[k]}</span>`).join(' ');}
 function renderUI(){
-  const el=document.getElementById('ui');
-  if(!G.enemy){el.innerHTML='';return;}
-  const poolHTML=KEYS.map(k=>`<span class="k k${k}">${k}×${G.pool[k]}</span>`).join(' ');
+  const el=document.getElementById('ui');if(!G.enemy){el.innerHTML='';return;}
   if(G.phase==='plan'){
-    el.innerHTML=`<div class="row" style="align-items:center"><div class="panel pool">鍵池 ${poolHTML} <span class="dim" style="font-size:13px">${poolSize()}/${POOL_MAX}</span></div>
-    <div class="panel">護盾 ${G.shield}　${G.passives.length?'被動：'+G.passives.map(c=>CARDS[c.id].name).join('、'):''}</div>
-    <button class="btn" onclick="startRhythm()">開始演奏 ♪（Enter）</button><span class="dim">牌庫 ${G.draw.length}｜棄牌 ${G.discard.length}｜牌組 ${G.deck.length}</span></div>
+    el.innerHTML=`<div class="row" style="align-items:center"><div class="panel" style="font-size:16px">字母池 ${poolHTML()}</div>
+    <div class="panel dim">預告：${G.waves.map(w=>`${w.at} 秒 ${w.n} 張${w.sp?'（含 E、Q）':''}`).join('、')}${G.freeze?'':''}　時限 ${G.time} 秒</div>
+    <button class="btn" onclick="startClash()">開始交鋒（Enter）</button><span class="dim">牌庫 ${G.draw.length}｜棄牌 ${G.discard.length}｜牌組 ${G.deck.length}</span></div>
     ${G.mode?`<div style="color:var(--red);margin-top:6px">${G.mode==='swap'?'換弦：點一張手牌棄掉':'BAN：點一張手牌永久移除'}</div>`:''}
     <div class="row" style="margin-top:8px">${G.hand.map((c,i)=>cardHTML(c.id,`onclick="playCard(${i})"`,G.mode?'pick':'')).join('')||'<span class="dim">手牌打完了</span>'}</div>`;
-  }else el.innerHTML=`<div class="panel pool">鍵池 ${poolHTML}　<span class="dim" style="font-size:13px">按 W A S D，每拍一鍵</span></div>`;
+  }else el.innerHTML=`<div class="row" style="align-items:center"><div class="panel" style="font-size:16px">字母池 ${poolHTML()}</div><span class="dim">打字拼招・Backspace 退回・最後一波落下後按 Enter 提早結束</span></div>`;
 }
+function avail(){const n={...G.pool};(G.field||[]).forEach(f=>{if(!f.gone)n[f.ch]=(n[f.ch]||0)+1;});return n;}
 function renderSkills(){
-  const str=G.phase==='rhythm'?bufStr():'';
+  const str=G.phase==='clash'?bufStr():'',n=avail();
   document.getElementById('skills').innerHTML=SKILLS.map(s=>{
-    const ok=G.pool?canAfford(s):true,live=str&&s.cmd.startsWith(str);
-    return `<div class="skill ${live?'live':ok?'ok':'no'}"><b>${WHO[s.who].icon} ${s.name}</b> <span class="dim">${s.who}</span><br>${s.cmd.split('').map((k,i)=>`<span class="k k${k} ${live&&i<str.length?'done':''}">${k}</span>`).join('')}<br><span class="dim">${s.text}</span></div>`;}).join('');
-  if(G.phase==='rhythm'){const el=document.querySelector('.pool');if(el)el.innerHTML=`鍵池 ${KEYS.map(k=>`<span class="k k${k}">${k}×${G.pool[k]}</span>`).join(' ')}　<span class="dim" style="font-size:13px">輸入中：${str||'—'}</span>`;}
+    const have=G.skills&&G.skills.includes(s.cmd);
+    const need={};for(const c of s.cmd.slice(str&&s.cmd.startsWith(str)?str.length:0))need[c]=(need[c]||0)+1;
+    const ok=have&&Object.keys(need).every(c=>(n[c]||0)>=need[c]),live=have&&str&&s.cmd.startsWith(str);
+    return `<div class="skill ${!have?'lock':live?'live':ok?'ok':''}"><b>${WHO[s.who].icon} ${s.name}</b> <span class="dim">${s.who}${have?'':'・未學會'}</span><br>${s.cmd.split('').map((k,i)=>`<span class="k k${k} ${live&&i<str.length?'done':''}">${k}</span>`).join('')}<br><span class="dim">${s.text}</span></div>`;}).join('');
 }
 
 // ===== 繪圖 =====
 const cv=document.getElementById('cv'),cx=cv.getContext('2d');
-const TX=40,TW=880,TY=262,CW=TW/16;
-function floatTxt(text,col,big){G.floats.push({x:big?380:TX+30,y:big?150:TY-14,text,col,born:performance.now(),big});}
-function burst(k){const t=now(),b=nearestBeat(t);for(let i=0;i<8;i++)G.parts.push({x:TX+b*CW+CW/2,y:TY+40,vx:(Math.random()-.5)*4,vy:-Math.random()*4,col:KCOL[k],born:performance.now()});}
-function sparks(col,n){for(let i=0;i<n;i++)G.parts.push({x:700+Math.random()*120,y:110+Math.random()*60,vx:(Math.random()-.5)*7,vy:(Math.random()-.7)*6,col,born:performance.now()});}
-function shake(px){cv.style.transform=`translate(${(Math.random()-.5)*px}px,${(Math.random()-.5)*px}px)`;setTimeout(()=>cv.style.transform='',90);setTimeout(()=>cv.style.transform=`translate(${(Math.random()-.5)*px/2}px,0)`,40);}
-function freeze(){G.slow=performance.now();}
+function floatTxt(text,col,big){G.floats.push({x:big?300:40,y:big?160:385,text,col,born:performance.now(),big});}
+function sparks(col,n){for(let i=0;i<n;i++)G.parts.push({x:700+Math.random()*120,y:100+Math.random()*60,vx:(Math.random()-.5)*7,vy:(Math.random()-.7)*6,col,born:performance.now()});}
+function shake(px){cv.style.transform=`translate(${(Math.random()-.5)*px}px,${(Math.random()-.5)*px}px)`;setTimeout(()=>cv.style.transform='',90);}
 function draw(){
-  const W=cv.width,H=cv.height,P=performance.now();cx.clearRect(0,0,W,H);
-  if(!G.enemy)return;
-  // 舞台：樂團
-  ['主角','葛倫','莉瑟拉'].forEach((w,i)=>{cx.font='44px system-ui';cx.fillText(WHO[w].icon,70+i*90,140+(i%2)*20);cx.font='12px system-ui';cx.fillStyle=WHO[w].col;cx.fillText(w,74+i*90,170+(i%2)*20);});
-  cx.fillStyle='#fff';cx.font='bold 14px system-ui';cx.fillText(`士氣 ${G.morale}/${G.maxMorale}`,60,30);bar(60,38,240,10,G.morale/G.maxMorale,'#7dffa8');
-  if(G.shield){cx.fillStyle='#7dffa8';cx.fillText(`🛡 ${G.shield}`,310,48);}
-  cx.fillStyle='#9a8fb5';cx.font='13px system-ui';cx.fillText(`第 ${G.fight+1}/${ENEMIES.length} 場・回合 ${G.round}${G.intent.fast?'・後半 120 BPM':'・100 BPM'}`,60,70);
-  // 敵人
-  const E=G.enemy;E.shownHp+= (E.hp-E.shownHp)*0.15;E.knock*=0.88;
-  const fl=P-E.flash<120;cx.save();cx.font='96px system-ui';if(fl)cx.filter='brightness(4)';cx.fillText(E.icon,710+E.knock,170);cx.restore();
-  cx.fillStyle='#fff';cx.font='bold 15px system-ui';cx.fillText(`${E.name}${E.boss?'（Boss）':''}`,640,30);
-  const bounce=Math.abs(E.shownHp-E.hp)>0.5?Math.sin(P/30)*2:0;bar(640,38+bounce,260,12,E.shownHp/E.maxHp,'#ff4d6d');cx.fillStyle='#fff';cx.font='12px system-ui';cx.fillText(`${E.hp}/${E.maxHp}`,905,49);
-  cx.fillStyle='#ff9bb0';cx.font='13px system-ui';cx.fillText(`預告：${G.intent.note}`,640,215);
-  // 節奏條
-  const t=G.phase==='rhythm'?now():-1;
-  for(let b=0;b<16;b++){const x=TX+b*CW,hit=G.intent.hits.find(h=>h.beat===b+1);
-    cx.fillStyle=G.intent.fast&&b>=8?'#1d1430':'#17111f';cx.fillRect(x+2,TY,CW-4,80);
-    if(hit&&!hit.done){cx.fillStyle='#ff4d6d33';cx.fillRect(x+2,TY,CW-4,80);cx.fillStyle='#ff4d6d';cx.font='bold 13px system-ui';cx.fillText(`⚔${hit.dmg}`,x+12,TY+18);}
-    if(G.blocks&&G.blocks[b+1]){cx.fillStyle='#ffc857';cx.font='bold 12px system-ui';cx.fillText(G.blocks[b+1].parry?'彈反':'擋',x+16,TY+74);}
-    cx.fillStyle='#665a80';cx.font='11px system-ui';cx.fillText(b+1,x+5,TY+92+8);
-    const m=G.marks[b];if(m){cx.fillStyle=KCOL[m.k];cx.globalAlpha=m.paid||m.cast?1:.5;cx.font='bold 26px system-ui';cx.fillText(m.k,x+15,TY+50);cx.globalAlpha=1;
-      cx.fillStyle=m.grade==='perfect'?'#ffc857':'#7dffa8';cx.fillRect(x+6,TY+60,CW-12,3);if(m.cast){cx.fillStyle=WHO[m.cast].col;cx.fillRect(x+2,TY-6,CW-4,4);}}
-  }
-  if(G.phase==='rhythm'){
-    let px;if(t<0)px=TX+t/0.6*CW;else{let b=0;while(b<15&&G.beats[b+1]<=t)b++;const nb=b<15?G.beats[b+1]:G.beats[15]+0.6;px=TX+(b+(t-G.beats[b])/(nb-G.beats[b]))*CW+CW/2;}
-    cx.strokeStyle='#fff';cx.lineWidth=3;cx.beginPath();cx.moveTo(px,TY-10);cx.lineTo(px,TY+86);cx.stroke();
-    if(t<0){cx.fillStyle='#ffc857';cx.font='bold 48px system-ui';cx.fillText(Math.ceil(-t/0.6),W/2-12,200);}
-  }else if(G.phase==='plan'){cx.fillStyle='#9a8fb5';cx.font='12px system-ui';cx.fillText('節奏條：紅色＝敵人攻擊拍。規劃好在哪些空檔排招。',TX,TY+112);}
-  // 粒子與文字
+  const W=cv.width,H=cv.height,P=performance.now();cx.clearRect(0,0,W,H);if(!G.enemy)return;
+  ['主角','葛倫','莉瑟拉'].forEach((w,i)=>{cx.font='40px system-ui';cx.fillText(WHO[w].icon,60+i*80,125+(i%2)*16);cx.font='12px system-ui';cx.fillStyle=WHO[w].col;cx.fillText(w,62+i*80,150+(i%2)*16);});
+  cx.fillStyle='#fff';cx.font='bold 14px system-ui';cx.fillText(`士氣 ${G.morale}/${G.maxMorale}`,50,28);bar(50,36,240,10,G.morale/G.maxMorale,'#7dffa8');
+  if(G.shield){cx.fillStyle='#7dffa8';cx.fillText(`🛡 ${G.shield}`,300,46);}
+  cx.fillStyle='#9a8fb5';cx.font='13px system-ui';cx.fillText(`第 ${G.fight+1}/${ENEMIES.length} 場・回合 ${G.round}${G.burn?`・灼燒 ${G.burn}`:''}`,50,66);
+  const E=G.enemy;E.shownHp+=(E.hp-E.shownHp)*.15;E.knock*=.88;
+  cx.save();cx.font='88px system-ui';if(P-E.flash<120)cx.filter='brightness(4)';cx.fillText(E.icon,720+E.knock,150);cx.restore();
+  cx.fillStyle='#fff';cx.font='bold 15px system-ui';cx.fillText(`${E.name}${E.boss?'（Boss）':''}`,640,28);
+  bar(640,36+(Math.abs(E.shownHp-E.hp)>.5?Math.sin(P/30)*2:0),260,12,E.shownHp/E.maxHp,'#ff4d6d');cx.fillStyle='#fff';cx.font='12px system-ui';cx.fillText(`${E.hp}/${E.maxHp}`,905,47);
+  // 時限條
+  const t=G.phase==='clash'?now():G.phase==='plan'?-1:G.time;
+  bar(50,180,860,8,G.phase==='clash'?Math.max(0,1-Math.max(0,t)/G.time):1,'#ffc857');
+  if(G.phase==='clash'){cx.fillStyle='#ffc857';cx.font='bold 14px system-ui';cx.fillText(t<0?'準備…':`${Math.max(0,G.time-t).toFixed(1)} 秒`,915,189);
+    const bp=((t%BEAT)+BEAT)%BEAT/BEAT;cx.fillStyle=`rgba(255,200,87,${Math.max(0,1-bp*3)})`;cx.beginPath();cx.arc(30,184,7,0,7);cx.fill();
+    G.waves.forEach((w,i)=>{const x=50+860*w.at/G.time;cx.fillStyle=w.arrived?'#ff4d6d55':'#ff4d6d';cx.fillRect(x-1,176,3,16);});}
+  // 場上字母
+  cx.fillStyle='#9a8fb5';cx.font='12px system-ui';cx.fillText('場上字母（時間到時每張 1 點傷害）',50,212);
+  const byWave={};G.field.forEach(f=>{(byWave[f.wave]=byWave[f.wave]||[]).push(f);});
+  Object.keys(byWave).forEach((w,row)=>{byWave[w].forEach((f,i)=>{
+    const x=50+i*50+(row%2)*0,y=222+row*40,age=P-f.born;if(age<0)return;
+    let a=1,dy=Math.max(0,1-age/200)*-30;if(f.gone){a=1-(P-f.gone)/300;if(a<=0)return;dy=-(1-a)*20;}
+    cx.globalAlpha=a;cx.fillStyle=LCOL[f.ch];cx.fillRect(x,y+dy,40,34);cx.fillStyle=f.ch==='E'?'#fff':'#000';cx.font='bold 22px system-ui';cx.fillText(f.ch,x+12,y+dy+25);cx.globalAlpha=1;});
+    cx.fillStyle='#665a80';cx.font='11px system-ui';cx.fillText(`第${+w+1}波`,8,248+row*40);});
+  if(G.phase==='plan'){cx.fillStyle='#665a80';cx.font='14px system-ui';cx.fillText('開始交鋒後，字母會在預告的時間點落下。',50,250);}
+  // 輸入中
+  if(G.phase==='clash'&&G.buf.length){cx.fillStyle='#fff';cx.font='bold 18px system-ui';cx.fillText('輸入：',560,212+0);G.buf.forEach((b,i)=>{cx.fillStyle=LCOL[b.ch];cx.fillText(b.ch,620+i*22,212);});}
   G.parts=G.parts.filter(p=>P-p.born<600);G.parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.2;cx.globalAlpha=1-(P-p.born)/600;cx.fillStyle=p.col;cx.fillRect(p.x,p.y,4,4);});cx.globalAlpha=1;
-  G.floats=G.floats.filter(f=>P-f.born<900);G.floats.forEach(f=>{const a=(P-f.born)/900;cx.globalAlpha=1-a;cx.fillStyle=f.col;cx.font=`bold ${f.big?24:13}px system-ui`;cx.fillText(f.text,f.x,f.y-a*24);});cx.globalAlpha=1;
-  if(G.slow&&P-G.slow<200){cx.fillStyle='rgba(255,255,255,.12)';cx.fillRect(0,0,W,H);}
-  if(G.paused){cx.fillStyle='rgba(10,6,16,.75)';cx.fillRect(0,0,W,H);cx.fillStyle='#fff';cx.font='bold 36px system-ui';cx.textAlign='center';cx.fillText('已暫停',W/2,H/2);cx.font='14px system-ui';cx.fillText('按 P 或「繼續」',W/2,H/2+28);cx.textAlign='left';}
+  G.floats=G.floats.filter(f=>P-f.born<1100);G.floats.forEach(f=>{const a=(P-f.born)/1100;cx.globalAlpha=1-a;cx.fillStyle=f.col;cx.font=`bold ${f.big?22:13}px system-ui`;cx.fillText(f.text,f.x,f.y-a*24);});cx.globalAlpha=1;
+  if(G.paused){cx.fillStyle='rgba(10,6,16,.8)';cx.fillRect(0,0,W,H);cx.fillStyle='#fff';cx.font='bold 36px system-ui';cx.textAlign='center';cx.fillText('已暫停',W/2,H/2);cx.textAlign='left';}
 }
-function bar(x,y,w,h,f,col){cx.fillStyle='#000';cx.fillRect(x,y,w,h);cx.fillStyle=col;cx.fillRect(x,y,w*Math.max(0,f),h);}
-function idle(){if(G.phase!=='rhythm')draw();requestAnimationFrame(idle);}
+function bar(x,y,w,h,f,col){cx.fillStyle='#000';cx.fillRect(x,y,w,h);cx.fillStyle=col;cx.fillRect(x,y,w*Math.max(0,Math.min(1,f)),h);}
+function idle(){if(G.phase!=='clash')draw();requestAnimationFrame(idle);}
 
 // ===== 聲音 =====
 function osc(type,f,t,d,v,f2){const a=audio(),o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);o.connect(g);g.connect(a.destination);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.001,t+d);o.start(t);o.stop(t+d);}
-function tick(t,acc){osc('square',acc?1800:1200,t,0.03,0.03);}
-const KF={W:659,A:523,S:110,D:784};
-function keySound(k,g){const t=audio().currentTime;if(k==='S')osc('sine',160,t,0.18,0.6,45);else osc(k==='A'?'sawtooth':'triangle',KF[k],t,0.2,g==='perfect'?0.22:0.14);}
-function phrase(s){const t=audio().currentTime,base={主角:392,葛倫:196,莉瑟拉:523,原始:330}[s.who];[0,4,7,12].slice(0,Math.min(4,s.cmd.length-1)).forEach((st,i)=>osc(s.who==='葛倫'?'sawtooth':'triangle',base*Math.pow(2,st/12),t+0.06+i*0.07,0.25,0.12));}
+function tick(t,acc){osc('square',acc?1800:1200,t,0.03,0.025);}
+const KF={W:659,A:523,S:110,D:784,E:330,Q:988};
+function keySound(k){const t=audio().currentTime;if(k==='S')osc('sine',160,t,0.18,0.5,45);else osc(k==='A'?'sawtooth':'triangle',KF[k],t,0.18,0.15);}
+function phrase(s){const t=audio().currentTime,base={主角:392,葛倫:196,莉瑟拉:523,原始:330}[s.who];[0,4,7,12].slice(0,Math.min(4,s.cmd.length-1)).forEach((st,i)=>osc(s.who==='葛倫'?'sawtooth':'triangle',base*Math.pow(2,st/12),t+0.04+i*0.07,0.25,0.12));}
 function boom(){const t=audio().currentTime;osc('sine',90,t,0.6,0.9,30);osc('sawtooth',60,t,0.4,0.3,25);}
 function clang(){const t=audio().currentTime;osc('square',1400,t,0.25,0.15,900);osc('triangle',2100,t,0.3,0.12);}
 function thud(v){const t=audio().currentTime;osc('sine',120,t,0.25,0.5*v,40);}
-function sfx(n){const t=audio().currentTime;if(n==='card')osc('triangle',880,t,0.06,0.08,1200);if(n==='miss')osc('sawtooth',140,t,0.15,0.1,90);if(n==='win')[0,4,7,12].forEach((s,i)=>osc('triangle',523*Math.pow(2,s/12),t+i*0.1,0.4,0.15));}
+function sfx(n){const t=audio().currentTime;if(n==='card')osc('triangle',880,t,0.06,0.08,1200);if(n==='err')osc('sawtooth',140,t,0.12,0.1,90);if(n==='win')[0,4,7,12].forEach((s,i)=>osc('triangle',523*Math.pow(2,s/12),t+i*0.1,0.4,0.15));}
 
 // ===== 雜項 =====
 function rint(n){return Math.floor(Math.random()*n)}
@@ -371,8 +325,9 @@ function closeOv(){document.getElementById('ov').innerHTML='';}
 document.addEventListener('keydown',e=>{
   if(e.repeat||document.getElementById('ov').innerHTML)return;const k=e.key.toUpperCase();
   if(k==='P'){togglePause();return;}
-  if(KEYS.includes(k)){press(k);e.preventDefault();}
-  else if(e.key==='Enter'&&G.phase==='plan')startRhythm();
+  if(LET.includes(k)){typeLetter(k);e.preventDefault();}
+  else if(e.key==='Backspace'){undo();e.preventDefault();}
+  else if(e.key==='Enter'){if(G.phase==='plan')startClash();else finishEarly();}
 });
 newRun();idle();
 </script>
