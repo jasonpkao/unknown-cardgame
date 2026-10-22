@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>餘燼安可 PoC</title>
+<style>
+:root{--bg:#14101c;--panel:#1f1830;--line:#3a2f52;--text:#eee6ff;--dim:#9a8fb5;--heat:#ff7b54;--good:#7dffa8;--bad:#ff4d6d;--gold:#ffc857}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,"PingFang TC","Noto Sans TC",sans-serif;font-size:14px}
+#app{max-width:1000px;margin:0 auto;padding:12px 16px}
+h1{font-size:20px;margin:4px 0 8px}h1 small{color:var(--dim);font-weight:400;font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.bar{height:8px;background:#000;border-radius:4px;overflow:hidden;margin-top:3px}.bar>i{display:block;height:100%;background:var(--heat)}
+.aud{min-width:120px;flex:1}.aud.fan{opacity:.45}.aud .intent{color:var(--bad);font-size:12px;margin-top:3px}
+canvas{width:100%;background:#0c0912;border-radius:10px;border:1px solid var(--line);display:block}
+.card{width:150px;padding:7px;border-radius:9px;background:#2a2140;border:2px solid var(--line);cursor:pointer;position:relative;font-size:12px;user-select:none}
+.card:hover{border-color:#6c5a96}.card.sel{border-color:var(--gold);transform:translateY(-4px)}
+.card b{font-size:14px;display:block;margin-bottom:2px}.card .cost{position:absolute;right:6px;top:5px;background:var(--gold);color:#000;border-radius:50%;width:20px;height:20px;text-align:center;line-height:20px;font-weight:700}
+.card .meta{color:var(--dim);font-size:11px;margin-bottom:3px}
+.slot{flex:1;min-width:120px;min-height:86px;border:2px dashed var(--line);border-radius:9px;padding:6px;cursor:pointer;font-size:12px}
+.slot:hover{border-color:var(--gold)}.slot .k{font-size:20px;font-weight:800}
+.btn{background:var(--heat);color:#000;border:0;border-radius:8px;padding:9px 16px;font-weight:700;font-size:15px;cursor:pointer}
+.btn.ghost{background:#2a2140;color:var(--text);border:1px solid var(--line)}.btn:disabled{opacity:.4;cursor:default}
+.dim{color:var(--dim)}.tag{display:inline-block;padding:1px 6px;border-radius:5px;font-size:11px;background:#000;margin-right:3px}
+.overlay{position:fixed;inset:0;background:rgba(10,6,16,.88);display:flex;align-items:center;justify-content:center;z-index:9}
+.overlay .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;max-width:760px;width:calc(100% - 32px);max-height:90vh;overflow:auto}
+.keys{display:flex;gap:6px;margin-top:6px}.keys button{flex:1;padding:12px 0;font-size:18px;font-weight:800;background:#2a2140;color:var(--text);border:1px solid var(--line);border-radius:8px}
+#log{font-size:12px;color:var(--dim);height:48px;overflow:auto}
+label{cursor:pointer}
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>《Encore of Embers｜餘燼安可》 <small>規劃＋演奏 PoC · v0.3</small></h1>
+  <div class="row" id="top"></div>
+  <div class="row" id="auds" style="margin-top:8px"></div>
+  <div style="margin-top:8px;position:relative"><canvas id="cv" width="960" height="270"></canvas></div>
+  <div class="keys" id="touch"></div>
+  <div id="plan" style="margin-top:8px"></div>
+  <div class="panel" style="margin-top:8px"><div id="log"></div></div>
+</div>
+<div id="ov"></div>
+<script>
+// ===== 資料 =====
+const LANES=['W','A','S','D'];
+const LCOL={W:'#7fd3ff',A:'#ffc857',S:'#ff7b54',D:'#b48cff'};
+const MEMBERS={
+  elf:{name:'莉瑟拉',role:'精靈主唱',lane:'W',skill:{name:'拉長音',cost:2,cd:3,text:'本小節 W 每次命中熱度 +3'}},
+  bard:{name:'艾德',role:'吟遊詩人吉他',lane:'A',skill:{name:'即興 Solo',cost:0,cd:3,text:'按下後 2 秒內 Good 升為 Perfect'}},
+  dwarf:{name:'葛倫',role:'矮人鼓手',lane:'S',skill:{name:'熔爐開火',cost:1,cd:2,text:'接下來 4 個 S 音符自動 Perfect'}},
+};
+const LANE_OWNER={W:'elf',A:'bard',S:'dwarf',D:null};
+const CARDS={
+  voice:{name:'清亮長音',owner:'elf',rar:'普通',cost:1,cond:'hit',text:'命中：+2 熱度',fx:c=>c.heat(2)},
+  charm:{name:'魅惑旋律',owner:'elf',rar:'進階',cost:1,cond:'perfect',text:'Perfect：+5 熱度',fx:c=>c.heat(5)},
+  aria:{name:'精靈詠嘆',owner:'elf',rar:'傳說',cost:2,cond:'flawless',text:'整小節該鍵零 Miss：全場熱度 = 命中數×3',fx:c=>c.heat(c.hits*3,true)},
+  riff:{name:'吉他 Riff',owner:'bard',rar:'進階',cost:1,cond:'perfect',text:'Perfect：+4 熱度',fx:c=>c.heat(4)},
+  chase:{name:'追擊撥弦',owner:'bard',rar:'普通',cost:1,cond:'hit',text:'命中：+1 熱度，下一個 W 音符熱度 ×2',fx:c=>{c.heat(1);G.chaseW=true}},
+  strum:{name:'連擊刷弦',owner:'bard',rar:'普通',cost:1,cond:'hit',text:'命中：熱度 = Combo÷3（至少 1）',fx:c=>c.heat(Math.max(1,Math.floor(G.combo/3)))},
+  kick:{name:'防禦底鼓',owner:'dwarf',rar:'普通',cost:1,cond:'hit',def:true,text:'命中：+2 穩定；可擋下噓聲',fx:c=>c.stab(2)},
+  beat:{name:'重拍',owner:'dwarf',rar:'普通',cost:1,cond:'hit',text:'命中：+2 熱度',fx:c=>c.heat(2)},
+  forge:{name:'熔爐重擊',owner:'dwarf',rar:'稀有',cost:2,cond:'streak4',text:'該鍵連續 4 Perfect：全場 +10 熱度',fx:c=>c.heat(10,true)},
+  roll:{name:'連擊鼓點',owner:'dwarf',rar:'進階',cost:1,cond:'perfect',text:'Perfect：熱度 = Combo÷4 +1',fx:c=>c.heat(1+Math.floor(G.combo/4))},
+  amp:{name:'擴音魔晶',owner:null,rar:'稀有',cost:1,kind:'amp',text:'疊在已裝卡的鍵上（不佔位）：該鍵本小節熱度 ×2'},
+  cheer:{name:'打氣',owner:null,rar:'普通',cost:0,cond:'hit',def:true,text:'命中：+1 熱度 +1 穩定；可擋下噓聲',fx:c=>{c.heat(1);c.stab(1)}},
+  shout:{name:'安可吶喊',owner:null,rar:'普通',cost:1,cond:'hit',text:'命中：全場 +1 熱度',fx:c=>c.heat(1,true)},
+  glow:{name:'螢光棒親衛隊',owner:null,rar:'進階',cost:1,kind:'fan',text:'應援團：本場每小節結束全場 +3 熱度',end:()=>addHeat(3,{all:true,perfect:true})},
+  gobs:{name:'地精吶喊團',owner:null,rar:'普通',cost:1,kind:'fan',text:'應援團：本場每小節結束最前排 +6 熱度',end:()=>addHeat(6,{perfect:true})},
+};
+const START_DECK=['voice','voice','charm','aria','riff','riff','chase','strum','kick','kick','beat','forge','amp','cheer','shout'];
+const REWARD_POOL=['charm','riff','forge','roll','amp','glow','gobs','aria','strum','chase','shout','beat'];
+const AUD_TYPES={
+  drunk:{name:'醉漢矮人',hp:28,desc:'S 鍵熱度 ×2'},
+  gob:{name:'噓聲地精',hp:9,desc:'每隻都會噓'},
+  shy:{name:'害羞的精靈少女',hp:30,desc:'只吃 Perfect 的熱度'},
+};
+const SHOWS=[
+  {name:'第一站：邊境酒館',venue:'酒館',auds:['drunk','gob','gob','gob']},
+  {name:'第二站：林間舞台',venue:'露天',auds:['shy','gob','gob','gob','drunk']},
+  {name:'第三站：地下 Livehouse',venue:'Livehouse',auds:['drunk','shy','drunk','gob','gob','gob']},
+];
+const STEP=0.25, STEPS=32, BAR=STEPS*STEP, LEAD=2.0; // 120 BPM，16 拍＝8 秒
+let WIN_P=0.055, WIN_G=0.13;
+
+// ===== 狀態 =====
+let G={};
+function newRun(){
+  G={deck:START_DECK.slice(),morale:60,maxMorale:60,pressure:{elf:20,bard:10,dwarf:15},cds:{elf:0,bard:0,dwarf:0},showIdx:0,auto:false,loose:false};
+  showMap();
+}
+function startShow(){
+  const s=SHOWS[G.showIdx];
+  G.auds=s.auds.map((t,i)=>({id:i,type:t,...AUD_TYPES[t],love:0,fan:false,intent:[]}));
+  G.draw=shuffle(G.deck.slice());G.discard=[];G.hand=[];G.fans=[];G.round=0;G.combo=0;G.maxCombo=0;
+  G.cds={elf:0,bard:0,dwarf:0};
+  log(`▶ ${s.name}開演！把每位觀眾的心動值填滿。`);
+  nextRound();
+}
+function nextRound(){
+  G.round++;G.phase='plan';
+  G.slots={W:null,A:null,S:null,D:null};G.amps={};G.skillSel=null;G.fanPlay=[];G.sel=null;
+  for(let i=0;i<5;i++)drawCard();
+  genChart();
+  render();
+}
+function drawCard(){
+  if(!G.draw.length){if(!G.discard.length)return;G.draw=shuffle(G.discard);G.discard=[];}
+  G.hand.push(G.draw.pop());
+}
+const chorus=()=>G.round===3||G.round===5;
+
+// ===== 譜面 =====
+function genChart(){
+  const N=[];const add=(lane,step,o={})=>{if(!N.find(n=>n.lane===lane&&n.step===step))N.push({lane,step,...o})};
+  [0,8,16,24].forEach(s=>add('W',s));for(let i=0;i<2;i++)add('W',2*rint(16));
+  for(let i=0;i<6;i++)add('A',1+2*rint(16));
+  for(let s=0;s<32;s+=4)add('S',s);for(let i=0;i<3;i++)add('S',2+4*rint(8));
+  for(let i=0;i<2;i++)add('D',4*rint(8)+2);
+  // 和弦：W+S 同時
+  const cs=[8,24][rint(2)];N.filter(n=>n.step===cs&&(n.lane==='W'||n.lane==='S')).forEach(n=>n.chord=cs);
+  // 觀眾意圖 → 噓聲音符
+  G.auds.forEach(a=>{a.intent=[];if(a.fan)return;
+    if(a.type==='drunk'){const st=[18,26].map(x=>x+(rint(2)?0:-4));st.forEach(s=>a.intent.push({lane:'S',step:s,dmg:5}));}
+    if(a.type==='gob'){a.intent.push({lane:rint(2)?'W':'A',step:4+rint(26),dmg:3});}
+  });
+  G.auds.forEach(a=>a.intent.forEach(b=>{let n=N.find(n=>n.lane===b.lane&&n.step===b.step);if(!n){n={lane:b.lane,step:b.step};N.push(n);}n.boo=(n.boo||0)+b.dmg;n.chord=undefined;}));
+  N.forEach(n=>{n.t=n.step*STEP;n.judged=false;n.grade=null;n.heatMade=0});
+  N.sort((a,b)=>a.t-b.t);G.notes=N;
+}
+
+// ===== 熱度 =====
+function addHeat(v,o={}){
+  let m=chorus()?1.5:1;if(o.lane&&G.amps[o.lane])m*=2;v*=m*(o.mult||1);
+  const alive=G.auds.filter(a=>!a.fan);if(!alive.length){G.encoreHeat=(G.encoreHeat||0)+v;return v;}
+  const targets=o.all?alive:[alive[0]];let total=0;
+  targets.forEach(a=>{let x=v;
+    if(a.type==='shy'&&!o.perfect)x=0;
+    if(a.type==='drunk'&&o.lane==='S')x*=2;
+    a.love+=x;total+=x;if(a.love>=a.hp&&!a.fan){a.fan=true;a.love=a.hp;fx(`${a.name} 成為粉絲！`,'#ffc857');log(`💛 ${a.name} 被收服`);}
+  });
+  if(total)renderAuds();
+  return total;
+}
+
+// ===== 演奏 =====
+let AC=null;
+function audio(){if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();return AC;}
+function now(){return AC.currentTime-G.t0;}
+function startPlay(){
+  const cost=planCost();if(cost>3)return;
+  audio();G.phase='play';G.t0=AC.currentTime+LEAD;G.stab=0;G.chaseW=false;G.wBonus=0;G.forgeAuto=0;G.soloUntil=-9;G.skillUsed=false;
+  G.ls={};LANES.forEach(l=>G.ls[l]={hits:0,miss:0,streak:0,streakFired:false});
+  G.floats=[];G.encoreHeat=0;
+  // 伴奏：每拍 hi-hat
+  for(let b=-4;b<16;b++)hat(G.t0+b*0.5,b<0?1200:b%4===0?900:600);
+  render();requestAnimationFrame(loop);
+}
+function loop(){
+  if(G.phase!=='play')return;
+  const t=now();
+  G.notes.forEach(n=>{if(n.judged)return;
+    if(G.forgeAuto>0&&n.lane==='S'&&t>=n.t){G.forgeAuto--;hit(n,'perfect');return;}
+    if(G.auto&&t>=n.t){hit(n,'good',true);return;}
+    if(t-n.t>winG(n.lane))miss(n);
+  });
+  draw(t);
+  if(t>BAR+0.4)endBar();else requestAnimationFrame(loop);
+}
+function winScale(l){let s=G.loose?1.6:1;const o=LANE_OWNER[l];if(o&&G.pressure[o]>=100)s*=0.7;return s;}
+const winG=l=>WIN_G*winScale(l), winP=l=>WIN_P*winScale(l);
+function press(l){
+  if(G.phase!=='play'||G.auto)return;const t=now();
+  let best=null;G.notes.forEach(n=>{if(!n.judged&&n.lane===l&&Math.abs(n.t-t)<=winG(l)&&(!best||Math.abs(n.t-t)<Math.abs(best.t-t)))best=n;});
+  flashLane(l);
+  if(!best)return;
+  let g=Math.abs(best.t-t)<=winP(l)?'perfect':'good';
+  if(g==='good'&&t<G.soloUntil)g='perfect';
+  hit(best,g);
+}
+function hit(n,grade,auto){
+  n.judged=true;n.grade=grade;G.combo++;G.maxCombo=Math.max(G.maxCombo,G.combo);
+  const L=G.ls[n.lane];L.hits++;tone(n.lane,n.step);
+  const card=G.slots[n.lane]&&CARDS[G.slots[n.lane]];
+  const own=card&&card.owner&&LANE_OWNER[n.lane]===card.owner;
+  const qual=!auto&&(grade==='perfect'||(own&&grade==='good'));
+  L.streak=qual?L.streak+1:0;
+  let mult=1;if(n.lane==='W'&&G.chaseW){mult=2;G.chaseW=false;}
+  let made=0;
+  const ctx={heat:(v,all)=>{made+=addHeat(v,{lane:n.lane,perfect:grade==='perfect',all,mult})},stab:v=>{G.stab+=v}};
+  if(!card)ctx.heat(1);
+  else if(card.cond==='hit')card.fx(ctx);
+  else if(card.cond==='perfect'){if(qual)card.fx(ctx);else ctx.heat(1);}
+  else if(card.cond==='streak4'){ctx.heat(1);if(L.streak>=4&&!L.streakFired){L.streakFired=true;card.fx(ctx);fx(`${card.name}！`,'#ff7b54');}}
+  else ctx.heat(1);
+  if(n.lane==='W'&&G.wBonus)ctx.heat(G.wBonus);
+  n.heatMade=made;
+  if(n.boo){
+    if(card&&card.def){floatAt(n.lane,'擋下！','#7dffa8');}
+    else{const dmg=Math.max(0,Math.ceil(n.boo/2)-G.stab);G.stab=Math.max(0,G.stab-Math.ceil(n.boo/2));hurt(n.lane,dmg,2);}
+  }
+  if(n.chord!==undefined){const pair=G.notes.find(m=>m!==n&&m.chord===n.chord);
+    if(pair&&pair.judged){if(pair.grade==='perfect'&&grade==='perfect'){const b=n.heatMade+pair.heatMade;addHeat(b/(chorus()?1.5:1),{perfect:true});fx(`和弦 ×2！`,'#ffc857');}}}
+  floatAt(n.lane,(grade==='perfect'?'PERFECT':'GOOD')+(made?` +${fmt(made)}`:''),grade==='perfect'?'#ffc857':'#7dffa8');
+}
+function miss(n){
+  n.judged=true;n.grade='miss';G.combo=0;const L=G.ls[n.lane];L.miss++;L.streak=0;
+  floatAt(n.lane,'MISS','#ff4d6d');
+  if(n.boo){const dmg=Math.max(0,n.boo-G.stab);G.stab=Math.max(0,G.stab-n.boo);hurt(n.lane,dmg,5);}
+}
+function hurt(lane,dmg,pr){
+  if(dmg>0){G.morale=Math.max(0,G.morale-dmg);floatAt(lane,`噓！-${dmg} 士氣`,'#ff4d6d');}
+  const o=LANE_OWNER[lane];if(o&&dmg>0){const before=G.pressure[o];G.pressure[o]=Math.min(100,G.pressure[o]+pr);if(before<100&&G.pressure[o]>=100)log(`😰 ${MEMBERS[o].name} 壓力爆表：怯場（判定變嚴）`);}
+  renderTop();
+}
+function useSkill(){
+  if(G.phase!=='play'||!G.skillSel||G.skillUsed)return;G.skillUsed=true;const m=G.skillSel;G.cds[m]=MEMBERS[m].skill.cd+1;
+  if(m==='dwarf')G.forgeAuto=4;if(m==='elf')G.wBonus=3;if(m==='bard')G.soloUntil=now()+2;
+  fx(`固定技：${MEMBERS[m].skill.name}`,'#b48cff');
+}
+function endBar(){
+  G.phase='result';
+  LANES.forEach(l=>{const c=G.slots[l]&&CARDS[G.slots[l]];if(c&&c.cond==='flawless'){const L=G.ls[l];const own=LANE_OWNER[l]===c.owner;
+    if(!G.auto&&L.hits>0&&L.miss<=(own?1:0)){c.fx({heat:(v,all)=>addHeat(v,{lane:l,all,perfect:true}),hits:L.hits});log(`✨ ${c.name} 發動！`);}}});
+  G.fanPlay.forEach(k=>CARDS[k].end());G.fans.forEach(k=>CARDS[k].end());
+  G.fans.push(...G.fanPlay);
+  // 棄牌
+  LANES.forEach(l=>{if(G.slots[l])G.discard.push(G.slots[l])});Object.values(G.amps).forEach(k=>G.discard.push(k));
+  G.discard.push(...G.hand);G.hand=[];
+  Object.keys(G.cds).forEach(m=>{if(G.cds[m]>0)G.cds[m]--});
+  const hits=G.notes.filter(n=>n.grade&&n.grade!=='miss').length;
+  log(`第 ${G.round} 小節結束：命中 ${hits}/${G.notes.length}，最大 Combo ${G.maxCombo}`);
+  render();
+  if(G.morale<=0)return endShow(false,'士氣歸零，被噓下台了。');
+  if(G.auds.every(a=>a.fan))return endShow(true);
+  if(G.round>=6)return endShow(false,'歌曲結束，還有觀眾沒被打動。');
+  setTimeout(nextRound,700);
+}
+function endShow(win,why){
+  G.deck.push(...[]);G.phase='over';
+  if(!win){overlay(`<h2>演出失敗</h2><p>${why}</p><p class="dim">巡演結束於 ${SHOWS[G.showIdx].name}。</p><button class="btn" onclick="newRun()">重新巡演</button>`);return;}
+  const encore=G.round<6;
+  if(encore){G.morale=Math.min(G.maxMorale,G.morale+10);Object.keys(G.pressure).forEach(m=>G.pressure[m]=Math.max(0,G.pressure[m]-10));}
+  if(G.showIdx===SHOWS.length-1){overlay(`<h2>🎉 巡演完成！</h2><p>你們在 Livehouse 撐完了整首歌。${encore?'而且觀眾喊出了安可！':''}</p><p class="dim">PoC 結束。牌組最後 ${G.deck.length} 張。</p><button class="btn" onclick="newRun()">再巡一次</button>`);return;}
+  const pool=shuffle(REWARD_POOL.slice());const pick=pool.slice(0,3);if(encore&&!pick.some(k=>['稀有','傳說'].includes(CARDS[k].rar)))pick[2]=['forge','aria','amp'][rint(3)];
+  overlay(`<h2>${encore?'🔥 安可！提早收服全場（士氣 +10、全員壓力 -10）':'演出成功！'}</h2><p>選一張新卡加入牌組：</p><div class="row">${pick.map(k=>cardHTML(k,`onclick="takeReward('${k}')"`)).join('')}</div><p><button class="btn ghost" onclick="takeReward(null)">跳過</button></p>`);
+}
+function takeReward(k){if(k){G.deck.push(k);log(`＋ 加入 ${CARDS[k].name}`);}G.showIdx++;restNode();}
+function restNode(){
+  overlay(`<h2>排練室</h2><p>下一站前可以做一件事：</p><div class="row">
+  <button class="btn" onclick="rest('heal')">練習：回復 15 士氣</button>
+  ${Object.keys(MEMBERS).map(m=>`<button class="btn ghost" onclick="rest('${m}')">和 ${MEMBERS[m].name} 談心（壓力 -30，目前 ${G.pressure[m]}）</button>`).join('')}
+  </div>`);
+}
+function rest(w){if(w==='heal')G.morale=Math.min(G.maxMorale,G.morale+15);else G.pressure[w]=Math.max(0,G.pressure[w]-30);showMap();}
+function showMap(){
+  overlay(`<h2>巡演地圖</h2><div class="row">${SHOWS.map((s,i)=>`<div class="panel" style="flex:1;${i===G.showIdx?'border-color:var(--gold)':i<G.showIdx?'opacity:.4':''}"><b>${s.name}</b><div class="dim">${s.auds.map(t=>AUD_TYPES[t].name).join('、')}</div></div>`).join('')}</div>
+  <p>樂團：${Object.values(MEMBERS).map(m=>`<span class="tag">${m.role} ${m.name}</span>`).join('')}　牌組 ${G.deck.length} 張　士氣 ${G.morale}/${G.maxMorale}</p>
+  <details><summary>怎麼玩</summary><ul class="dim">
+  <li><b>規劃</b>：抽 5 張，用 3 點節拍把卡裝到 W/A/S/D（每鍵一張）。點手牌→點鍵位；點已裝的鍵位可取回。空白鍵裝一位團員的固定技。</li>
+  <li><b>演奏</b>：音符由右往左流向判定線，對拍按 W/A/S/D。紅色是噓聲音符，裝防禦卡命中可擋下，Miss 扣士氣、加該團員壓力。</li>
+  <li>卡裝在自己團員的鍵位（W 精靈／A 吉他／S 鼓手），Perfect 條件放寬為 Good。沒裝卡的鍵命中也有 1 熱度。</li>
+  <li>金框是 W+S 和弦，兩鍵都 Perfect 熱度 ×2。第 3、5 小節是副歌，熱度 ×1.5。6 小節內收服全場；提早收服 = 安可。</li>
+  </ul></details>
+  <p><label><input type="checkbox" ${G.loose?'checked':''} onchange="G.loose=this.checked"> 判定寬鬆</label>　<label><input type="checkbox" ${G.auto?'checked':''} onchange="G.auto=this.checked"> 自動演奏（全 Good，進階以上條件不會達成）</label></p>
+  <button class="btn" onclick="closeOv();startShow()">開演 ▶</button>`);
+}
+
+// ===== 規劃 UI =====
+function planCost(){let c=0;LANES.forEach(l=>{if(G.slots[l])c+=CARDS[G.slots[l]].cost});Object.values(G.amps).forEach(k=>c+=CARDS[k].cost);G.fanPlay.forEach(k=>c+=CARDS[k].cost);if(G.skillSel)c+=MEMBERS[G.skillSel].skill.cost;return c;}
+function selCard(i){G.sel=G.sel===i?null:i;renderPlan();}
+function clickSlot(l){
+  if(G.phase!=='plan')return;
+  if(G.sel!==null){const k=G.hand[G.sel];const c=CARDS[k];
+    if(c.kind==='fan'){G.fanPlay.push(k);}
+    else if(c.kind==='amp'){if(G.amps[l])return;G.amps[l]=k;}
+    else{if(G.slots[l])G.hand.push(G.slots[l]);G.slots[l]=k;}
+    G.hand.splice(G.sel,1);G.sel=null;
+  }else if(G.amps[l]){G.hand.push(G.amps[l]);delete G.amps[l];}
+  else if(G.slots[l]){G.hand.push(G.slots[l]);G.slots[l]=null;}
+  render();
+}
+function clickFan(){if(G.sel!==null&&CARDS[G.hand[G.sel]].kind==='fan'){G.fanPlay.push(G.hand[G.sel]);G.hand.splice(G.sel,1);G.sel=null;}else if(G.sel===null&&G.fanPlay.length){G.hand.push(G.fanPlay.pop());}render();}
+function pickSkill(m){if(G.cds[m]>0)return;G.skillSel=G.skillSel===m?null:m;render();}
+function cardHTML(k,attr='',sel=false){const c=CARDS[k];const own=c.owner?MEMBERS[c.owner]:null;
+  return `<div class="card ${sel?'sel':''}" ${attr} style="border-left:5px solid ${own?LCOL[own.lane]:'#888'}"><span class="cost">${c.cost}</span><b>${c.name}</b><div class="meta">${c.rar}｜${own?own.role+'（'+own.lane+'）':'中立'}${c.kind==='amp'?'｜樂器':c.kind==='fan'?'｜應援團':''}</div>${c.text}</div>`;}
+function renderPlan(){
+  const el=document.getElementById('plan');
+  if(G.phase!=='plan'){el.innerHTML=G.phase==='play'?`<div class="panel dim">演奏中…按 <b>W A S D</b> 對拍打擊${G.skillSel?`，<b>空白鍵</b>發動「${MEMBERS[G.skillSel].skill.name}」`:''}。</div>`:'';return;}
+  const cost=planCost();
+  el.innerHTML=`<div class="row">${LANES.map(l=>{const k=G.slots[l];const o=LANE_OWNER[l];return `<div class="slot" onclick="clickSlot('${l}')" style="border-color:${LCOL[l]}55"><span class="k" style="color:${LCOL[l]}">${l}</span> <span class="dim">${o?MEMBERS[o].role:'空席（零星音符）'}</span>${o&&G.pressure[o]>=100?' <span class="tag" style="color:var(--bad)">怯場</span>':''}<div style="margin-top:4px">${k?`<b>${CARDS[k].name}</b>（${CARDS[k].cost}）<br><span class="dim">${CARDS[k].text}</span>`:'<span class="dim">未裝卡：命中 +1</span>'}${G.amps[l]?'<br><span class="tag" style="color:var(--gold)">擴音魔晶 ×2</span>':''}</div></div>`}).join('')}
+  <div class="slot" onclick="clickFan()" style="max-width:150px"><span class="k">📣</span> <span class="dim">應援席</span><div>${G.fanPlay.concat(G.fans).map(k=>CARDS[k].name).join('<br>')||'<span class="dim">放應援團卡</span>'}</div></div></div>
+  <div class="row" style="margin-top:8px;align-items:center"><span class="dim">空白鍵固定技：</span>${Object.entries(MEMBERS).map(([m,M])=>`<button class="btn ${G.skillSel===m?'':'ghost'}" style="font-size:12px;padding:6px 8px" ${G.cds[m]>0?'disabled':''} onclick="pickSkill('${m}')" title="${M.skill.text}">${M.name}・${M.skill.name}（${M.skill.cost}）${G.cds[m]>0?' CD'+G.cds[m]:''}</button>`).join('')}</div>
+  <div class="dim" style="margin:4px 0">${G.skillSel?MEMBERS[G.skillSel].skill.text:'把滑鼠移到固定技上看效果'}</div>
+  <div class="row" style="margin-top:6px">${G.hand.map((k,i)=>cardHTML(k,`onclick="selCard(${i})"`,G.sel===i)).join('')}</div>
+  <div class="row" style="margin-top:10px;align-items:center"><span style="font-size:16px">節拍 <b style="color:${cost>3?'var(--bad)':'var(--gold)'}">${cost}</b> / 3</span>
+  <button class="btn" ${cost>3?'disabled':''} onclick="startPlay()">開始演奏 ♪（Enter）</button>
+  <span class="dim">牌庫 ${G.draw.length}｜棄牌 ${G.discard.length}</span></div>`;
+}
+function renderTop(){
+  if(!G.auds)return;
+  document.getElementById('top').innerHTML=`<div class="panel" style="flex:1"><b>${SHOWS[G.showIdx].name}</b>　小節 <b>${G.round}/6</b> ${chorus()?'<span class="tag" style="color:var(--gold)">副歌 熱度×1.5</span>':''}
+  <div>士氣 ${G.morale}/${G.maxMorale}<div class="bar"><i style="width:${G.morale/G.maxMorale*100}%;background:var(--good)"></i></div></div></div>
+  <div class="panel" style="flex:2;display:flex;gap:10px">${Object.entries(MEMBERS).map(([m,M])=>`<div style="flex:1"><span style="color:${LCOL[M.lane]}">${M.lane}</span> ${M.name}<span class="dim"> ${M.role}</span><div class="dim" style="font-size:11px">壓力 ${G.pressure[m]}</div><div class="bar"><i style="width:${G.pressure[m]}%;background:${G.pressure[m]>=100?'var(--bad)':'#b48cff'}"></i></div></div>`).join('')}</div>`;
+}
+function renderAuds(){
+  if(!G.auds)return;
+  document.getElementById('auds').innerHTML=G.auds.map((a,i)=>`<div class="panel aud ${a.fan?'fan':''}">${!a.fan&&G.auds.filter(x=>!x.fan)[0]===a?'🎯 ':''}<b>${a.name}</b>${a.fan?' 💛':''}<div class="dim" style="font-size:11px">${a.desc}</div>
+  <div class="bar"><i style="width:${a.love/a.hp*100}%"></i></div><div style="font-size:11px">${fmt(a.love)}/${a.hp}</div>
+  <div class="intent">${a.fan?'':a.intent.length?a.intent.map(b=>`${b.lane} 鍵第 ${b.step/2+1} 拍噓 ${b.dmg}`).join('、'):(a.type==='shy'?'安靜看著…':'')}</div></div>`).join('');
+}
+function render(){renderTop();renderAuds();renderPlan();if(G.phase!=='play')draw(-LEAD);}
+
+// ===== 繪圖 =====
+const cv=document.getElementById('cv'),cx=cv.getContext('2d');
+const JX=150,LH=60,TOPY=20;
+let flashes={};
+function flashLane(l){flashes[l]=performance.now();}
+function floatAt(l,text,color){G.floats.push({x:JX+10,y:TOPY+LANES.indexOf(l)*LH+18,text,color,born:performance.now()});}
+function fx(text,color){G.floats.push({x:cv.width/2-80,y:130,text,color,born:performance.now(),big:true});}
+function draw(t){
+  const W=cv.width,H=cv.height;cx.clearRect(0,0,W,H);
+  const planning=G.phase!=='play';const speed=planning?(W-JX-20)/BAR:260;const t0=planning?0:t;
+  LANES.forEach((l,i)=>{const y=TOPY+i*LH;
+    const f=flashes[l]&&performance.now()-flashes[l]<120;
+    cx.fillStyle=f?'#2c2340':(i%2?'#130f1c':'#18121f');cx.fillRect(0,y,W,LH-4);
+    cx.fillStyle=LCOL[l];cx.font='bold 22px system-ui';cx.fillText(l,10,y+34);
+    cx.font='12px system-ui';cx.fillStyle='#cfc4e8';const k=G.slots&&G.slots[l];cx.fillText(k?CARDS[k].name:'（未裝卡）',36,y+24);
+    if(G.amps&&G.amps[l]){cx.fillStyle='#ffc857';cx.fillText('擴音 ×2',36,y+42);}
+  });
+  if(!planning){cx.strokeStyle='#fff';cx.lineWidth=3;cx.beginPath();cx.moveTo(JX,TOPY-6);cx.lineTo(JX,TOPY+4*LH);cx.stroke();
+    for(let b=0;b<=16;b++){const x=JX+(b*0.5-t0)*speed;if(x<JX||x>W)continue;cx.strokeStyle=b%4?'#2a2238':'#4a3d66';cx.lineWidth=1;cx.beginPath();cx.moveTo(x,TOPY);cx.lineTo(x,TOPY+4*LH-4);cx.stroke();}
+  }else{for(let b=0;b<=16;b++){const x=JX+b*0.5*speed;cx.strokeStyle=b%4?'#2a2238':'#4a3d66';cx.beginPath();cx.moveTo(x,TOPY);cx.lineTo(x,TOPY+4*LH-4);cx.stroke();if(b<16){cx.fillStyle='#665a80';cx.font='10px system-ui';cx.fillText(b+1,x+2,TOPY-6);}}}
+  (G.notes||[]).forEach(n=>{
+    if(n.judged&&!planning)return;
+    const x=JX+(n.t-t0)*speed;if(x<JX-30||x>W+20)return;const y=TOPY+LANES.indexOf(n.lane)*LH+(LH-4)/2;
+    const r=planning?8:15;
+    if(n.chord!==undefined){cx.strokeStyle='#ffc857';cx.lineWidth=3;cx.beginPath();cx.arc(x,y,r+4,0,7);cx.stroke();}
+    cx.fillStyle=n.boo?'#ff4d6d':LCOL[n.lane];cx.beginPath();cx.arc(x,y,r,0,7);cx.fill();
+    cx.fillStyle='#000';cx.font=`bold ${planning?9:13}px system-ui`;cx.textAlign='center';cx.fillText(n.boo?'噓':n.lane,x,y+4);cx.textAlign='left';
+  });
+  if(G.phase==='play'){
+    cx.font='bold 16px system-ui';cx.fillStyle='#fff';cx.fillText(`Combo ${G.combo}`,W-130,16);
+    cx.fillStyle='#7dffa8';cx.fillText(`穩定 ${G.stab}`,W-240,16);
+    if(t<0){cx.font='bold 40px system-ui';cx.fillStyle='#ffc857';cx.fillText(Math.ceil(-t/0.5),W/2,150);}
+    if(t<G.soloUntil){cx.fillStyle='#b48cff';cx.font='bold 14px system-ui';cx.fillText('即興 Solo：判定放寬',W-420,16);}
+    if(G.forgeAuto){cx.fillStyle='#ff7b54';cx.font='bold 14px system-ui';cx.fillText(`熔爐開火 ×${G.forgeAuto}`,W-420,16);}
+  }else if(G.phase==='plan'){cx.fillStyle='#9a8fb5';cx.font='12px system-ui';cx.fillText('譜面預覽（紅＝噓聲音符，金圈＝和弦）',JX,H-4);}
+  const nowp=performance.now();(G.floats||[]).forEach(f=>{const a=(nowp-f.born)/900;if(a>1)return;cx.globalAlpha=1-a;cx.fillStyle=f.color;cx.font=`bold ${f.big?26:13}px system-ui`;cx.fillText(f.text,f.x,f.y-a*20);cx.globalAlpha=1;});
+  if(G.floats)G.floats=G.floats.filter(f=>nowp-f.born<900);
+}
+
+// ===== 聲音：命中才有音，Miss 那一拍真的少一個音 =====
+const SCALE=[523,587,659,784,880,1047];
+function env(o,g,t,d,v){g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.001,t+d);o.start(t);o.stop(t+d);}
+function tone(l,step){const a=audio(),t=a.currentTime,o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);
+  if(l==='W'){o.type='triangle';o.frequency.value=SCALE[(step*3)%6];env(o,g,t,0.35,0.25);}
+  if(l==='A'){o.type='sawtooth';o.frequency.value=SCALE[(step+2)%4]/2;env(o,g,t,0.18,0.12);}
+  if(l==='S'){o.type='sine';o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(45,t+0.15);env(o,g,t,0.2,0.6);}
+  if(l==='D'){o.type='square';o.frequency.value=1318;env(o,g,t,0.25,0.06);}}
+function hat(t,f){const a=audio(),o=a.createOscillator(),g=a.createGain();o.type='square';o.frequency.value=f*4;o.connect(g);g.connect(a.destination);env(o,g,t,0.04,0.03);}
+
+// ===== 雜項 =====
+function rint(n){return Math.floor(Math.random()*n)}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rint(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+function fmt(v){return Math.round(v*10)/10}
+function log(s){const el=document.getElementById('log');el.innerHTML=`<div>${s}</div>`+el.innerHTML;}
+function overlay(h){document.getElementById('ov').innerHTML=`<div class="overlay"><div class="box">${h}</div></div>`;}
+function closeOv(){document.getElementById('ov').innerHTML='';}
+document.addEventListener('keydown',e=>{
+  if(e.repeat)return;const k=e.key.toUpperCase();
+  if(LANES.includes(k)){press(k);e.preventDefault();}
+  else if(e.code==='Space'){useSkill();e.preventDefault();}
+  else if(e.key==='Enter'&&G.phase==='plan'&&!document.getElementById('ov').innerHTML)startPlay();
+});
+document.getElementById('touch').innerHTML=LANES.map(l=>`<button style="color:${LCOL[l]}" onpointerdown="press('${l}')">${l}</button>`).join('')+`<button onpointerdown="useSkill()">技</button>`;
+newRun();
+</script>
+</body>
+</html>
