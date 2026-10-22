@@ -33,7 +33,16 @@ label{cursor:pointer}
 </head>
 <body>
 <div id="app">
-  <h1>《Encore of Embers｜餘燼安可》 <small>規劃＋演奏 PoC · v0.3</small></h1>
+  <div class="row" style="align-items:flex-start;justify-content:space-between">
+    <div style="flex:1;min-width:260px">
+      <h1>《Encore of Embers｜餘燼安可》 <small>規劃＋演奏 PoC · v0.3</small></h1>
+      <div class="dim" style="font-size:13px;line-height:1.6">帶著樂團巡演，用一首 6 小節的歌把觀眾變成粉絲。每小節先<b>規劃</b>：用 3 點節拍把手牌裝到 W／A／S／D 鍵位，空白鍵可裝團員固定技；再<b>演奏</b>：音符流到白線時按對應鍵，命中才觸發卡牌效果。紅色噓聲音符要用防禦卡擋，Miss 會扣士氣。士氣歸零或 6 小節內沒收服全場就失敗。</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <button class="btn ghost" id="pauseBtn" onclick="togglePause()">⏸ 暫停（P）</button>
+      <button class="btn ghost" onclick="restart()">↻ 重新開始</button>
+    </div>
+  </div>
   <div class="row" id="top"></div>
   <div class="row" id="auds" style="margin-top:8px"></div>
   <div style="margin-top:8px;position:relative"><canvas id="cv" width="960" height="270"></canvas></div>
@@ -170,8 +179,21 @@ function loop(){
 }
 function winScale(l){let s=G.loose?1.6:1;const o=LANE_OWNER[l];if(o&&G.pressure[o]>=100)s*=0.7;return s;}
 const winG=l=>WIN_G*winScale(l), winP=l=>WIN_P*winScale(l);
+function togglePause(){
+  if(G.phase!=='play'){log('只有演奏中可以暫停');return;}
+  G.paused=!G.paused;
+  if(G.paused)AC.suspend();else AC.resume();
+  document.getElementById('pauseBtn').textContent=G.paused?'▶ 繼續（P）':'⏸ 暫停（P）';
+}
+function restart(){
+  if(!confirm('確定要放棄這次巡演，從頭開始？'))return;
+  G.phase='over';if(AC)AC.resume();
+  document.getElementById('pauseBtn').textContent='⏸ 暫停（P）';
+  document.getElementById('log').innerHTML='';
+  newRun();
+}
 function press(l){
-  if(G.phase!=='play'||G.auto)return;const t=now();
+  if(G.phase!=='play'||G.auto||G.paused)return;const t=now();
   let best=null;G.notes.forEach(n=>{if(!n.judged&&n.lane===l&&Math.abs(n.t-t)<=winG(l)&&(!best||Math.abs(n.t-t)<Math.abs(best.t-t)))best=n;});
   flashLane(l);
   if(!best)return;
@@ -215,7 +237,7 @@ function hurt(lane,dmg,pr){
   renderTop();
 }
 function useSkill(){
-  if(G.phase!=='play'||!G.skillSel||G.skillUsed)return;G.skillUsed=true;const m=G.skillSel;G.cds[m]=MEMBERS[m].skill.cd+1;
+  if(G.phase!=='play'||!G.skillSel||G.skillUsed||G.paused)return;G.skillUsed=true;const m=G.skillSel;G.cds[m]=MEMBERS[m].skill.cd+1;
   if(m==='dwarf')G.forgeAuto=4;if(m==='elf')G.wBonus=3;if(m==='bard')G.soloUntil=now()+2;
   fx(`固定技：${MEMBERS[m].skill.name}`,'#b48cff');
 }
@@ -346,6 +368,7 @@ function draw(t){
     if(t<0){cx.font='bold 40px system-ui';cx.fillStyle='#ffc857';cx.fillText(Math.ceil(-t/0.5),W/2,150);}
     if(t<G.soloUntil){cx.fillStyle='#b48cff';cx.font='bold 14px system-ui';cx.fillText('即興 Solo：判定放寬',W-420,16);}
     if(G.forgeAuto){cx.fillStyle='#ff7b54';cx.font='bold 14px system-ui';cx.fillText(`熔爐開火 ×${G.forgeAuto}`,W-420,16);}
+    if(G.paused){cx.fillStyle='rgba(10,6,16,.7)';cx.fillRect(0,0,W,H);cx.font='bold 36px system-ui';cx.fillStyle='#fff';cx.textAlign='center';cx.fillText('已暫停',W/2,H/2);cx.font='14px system-ui';cx.fillText('按 P 或「繼續」回到演奏',W/2,H/2+28);cx.textAlign='left';}
   }else if(G.phase==='plan'){cx.fillStyle='#9a8fb5';cx.font='12px system-ui';cx.fillText('譜面預覽（紅＝噓聲音符，金圈＝和弦）',JX,H-4);}
   const nowp=performance.now();(G.floats||[]).forEach(f=>{const a=(nowp-f.born)/900;if(a>1)return;cx.globalAlpha=1-a;cx.fillStyle=f.color;cx.font=`bold ${f.big?26:13}px system-ui`;cx.fillText(f.text,f.x,f.y-a*20);cx.globalAlpha=1;});
   if(G.floats)G.floats=G.floats.filter(f=>nowp-f.born<900);
@@ -370,6 +393,7 @@ function overlay(h){document.getElementById('ov').innerHTML=`<div class="overlay
 function closeOv(){document.getElementById('ov').innerHTML='';}
 document.addEventListener('keydown',e=>{
   if(e.repeat)return;const k=e.key.toUpperCase();
+  if(k==='P'){togglePause();return;}
   if(LANES.includes(k)){press(k);e.preventDefault();}
   else if(e.code==='Space'){useSkill();e.preventDefault();}
   else if(e.key==='Enter'&&G.phase==='plan'&&!document.getElementById('ov').innerHTML)startPlay();
